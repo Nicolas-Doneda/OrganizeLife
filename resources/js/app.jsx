@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 
 // Pages
+import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
@@ -79,20 +80,27 @@ function App() {
                 <ThemeProvider>
                     <AuthProvider>
                         <Routes>
+                            {/* Public Landing Page */}
+                            <Route path="/" element={<LandingPage />} />
+
+                            {/* Guest Only Routes */}
                             <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
                             <Route path="/register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
 
+                            {/* Protected Routes */}
                             <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
                             <Route path="/bills" element={<ProtectedRoute><BillsPage /></ProtectedRoute>} />
                             <Route path="/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
                             <Route path="/categories" element={<ProtectedRoute><CategoriesPage /></ProtectedRoute>} />
                             <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
 
-                            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                            {/* Redirect old specific routes to newer ones */}
                             <Route path="/monthly-bills" element={<Navigate to="/bills" replace />} />
                             <Route path="/recurring-bills" element={<Navigate to="/bills" replace />} />
                             <Route path="/events" element={<Navigate to="/calendar" replace />} />
-                            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+
+                            {/* Fallback */}
+                            <Route path="*" element={<Navigate to="/" replace />} />
                         </Routes>
                     </AuthProvider>
                 </ThemeProvider>
