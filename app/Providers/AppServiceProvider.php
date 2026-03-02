@@ -22,6 +22,9 @@ class AppServiceProvider extends ServiceProvider
     {
         if (config('app.env') !== 'local') {
             URL::forceScheme('https');
+            
+            // Força todos os links de assets (CSS/JS do Vite) para usarem HTTPS
+            $this->app['request']->server->set('HTTPS','on');
         }
     }
 }
