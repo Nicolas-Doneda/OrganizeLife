@@ -1,37 +1,49 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import {
     CalendarDays,
     PiggyBank,
     LayoutDashboard,
     ArrowRight,
     CheckCircle2,
-    BarChart3
+    Moon,
+    Sun
 } from 'lucide-react';
 
 export default function LandingPage() {
     const { isAuthenticated, loading } = useAuth();
+    const { theme, toggleTheme } = useTheme();
 
     return (
-        <div className="min-h-screen bg-white">
+        <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors duration-300">
             {/* Header / Navbar */}
-            <header className="fixed top-0 w-full bg-white/80 backdrop-blur-md z-50 border-b border-gray-100">
+            <header className="fixed top-0 w-full bg-[var(--bg-primary)]/80 backdrop-blur-md z-50 border-b border-[var(--border-primary)] transition-colors duration-300">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl">
+                        <div className="w-8 h-8 rounded-lg bg-[var(--color-primary-600)] flex items-center justify-center text-white font-bold text-xl shadow-md">
                             O
                         </div>
-                        <span className="font-bold text-xl text-gray-900 tracking-tight">OrganizeLife</span>
+                        <span className="font-bold text-xl tracking-tight">OrganizeLife</span>
                     </div>
 
                     <nav className="flex items-center gap-4">
+                        {/* Theme Toggle Button */}
+                        <button
+                            onClick={toggleTheme}
+                            className="p-2 rounded-lg text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors focus-ring"
+                            aria-label="Toggle theme"
+                        >
+                            {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                        </button>
+
                         {loading ? (
-                            <div className="w-20 h-8 bg-gray-100 animate-pulse rounded-md"></div>
+                            <div className="w-20 h-8 bg-[var(--bg-tertiary)] animate-pulse rounded-md"></div>
                         ) : isAuthenticated ? (
                             <Link
                                 to="/dashboard"
-                                className="inline-flex items-center justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 transition-all"
+                                className="inline-flex items-center justify-center rounded-lg bg-[var(--color-primary-600)] px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-[var(--color-primary-700)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] focus:ring-offset-2 transition-all"
                             >
                                 Acesse seu painel
                             </Link>
@@ -39,13 +51,13 @@ export default function LandingPage() {
                             <>
                                 <Link
                                     to="/login"
-                                    className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+                                    className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
                                 >
                                     Login
                                 </Link>
                                 <Link
                                     to="/register"
-                                    className="inline-flex items-center justify-center rounded-lg bg-gradient-to-r from-indigo-500 to-purple-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:from-indigo-600 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all hover:scale-105"
+                                    className="inline-flex items-center justify-center rounded-lg bg-[var(--color-primary-600)] px-4 py-2 text-sm font-medium text-white shadow-md hover:bg-[var(--color-primary-700)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] focus:ring-offset-2 transition-all hover:scale-105"
                                 >
                                     Começar Grátis
                                 </Link>
@@ -57,28 +69,35 @@ export default function LandingPage() {
 
             <main>
                 {/* Hero Section */}
-                <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
-                    {/* Background decorations */}
-                    <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-50 via-white to-white"></div>
-                    <div className="absolute top-0 right-0 -translate-y-12 translate-x-1/3 w-[800px] h-[800px] bg-purple-100/50 rounded-full blur-[120px] -z-10 mix-blend-multiply opacity-50"></div>
-                    <div className="absolute top-32 left-0 -translate-x-1/3 w-[600px] h-[600px] bg-indigo-100/50 rounded-full blur-[120px] -z-10 mix-blend-multiply opacity-50"></div>
+                <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden flex flex-col items-center justify-center">
+                    {/* Background decorations matched to pine/emerald */}
+                    <div className="absolute top-0 right-0 -translate-y-12 translate-x-1/3 w-[800px] h-[800px] bg-[var(--color-primary-100)] dark:bg-[var(--color-primary-900)] rounded-full blur-[120px] -z-10 opacity-30"></div>
+                    <div className="absolute top-32 left-0 -translate-x-1/3 w-[600px] h-[600px] bg-[var(--color-primary-200)] dark:bg-[var(--color-primary-800)] rounded-full blur-[120px] -z-10 opacity-20"></div>
 
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-balance">
-                        <h1 className="text-5xl md:text-7xl font-extrabold text-gray-900 tracking-tight mb-8">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-balance z-10">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--bg-secondary)] border border-[var(--border-primary)] text-sm font-medium text-[var(--color-primary-600)] mb-8">
+                            <span className="relative flex h-2 w-2">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--color-primary-400)] opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--color-primary-500)]"></span>
+                            </span>
+                            Simplifique sua vida
+                        </div>
+
+                        <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-8">
                             Domine o seu
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-purple-600"> tempo </span>
+                            <span className="text-[var(--color-primary-600)]"> tempo </span>
                             e o seu
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-500"> dinheiro </span>
+                            <span className="text-[var(--color-primary-500)]"> dinheiro </span>
                         </h1>
-                        <p className="mt-4 text-xl text-gray-600 max-w-3xl mx-auto mb-10 leading-relaxed">
+                        <p className="mt-4 text-xl text-[var(--text-secondary)] max-w-3xl mx-auto mb-10 leading-relaxed">
                             OrganizeLife reúne gestão financeira, calendário inteligente e organização pessoal em um único aplicativo bonito e fácil de usar. Esqueça as dezenas de planilhas.
                         </p>
-
+                        
                         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                             {!isAuthenticated && (
                                 <Link
                                     to="/register"
-                                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-gray-900 px-8 py-4 text-base font-semibold text-white shadow-xl shadow-gray-900/10 hover:bg-gray-800 transition-all hover:-translate-y-1"
+                                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--color-primary-600)] px-8 py-4 text-base font-semibold text-white shadow-lg hover:bg-[var(--color-primary-700)] transition-all hover:-translate-y-1"
                                 >
                                     Criar conta gratuita
                                     <ArrowRight className="w-5 h-5" />
@@ -86,24 +105,24 @@ export default function LandingPage() {
                             )}
                             <a
                                 href="#features"
-                                className="w-full sm:w-auto inline-flex items-center justify-center rounded-xl bg-white px-8 py-4 text-base font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-200 hover:bg-gray-50 transition-all"
+                                className="w-full sm:w-auto inline-flex items-center justify-center rounded-xl bg-[var(--bg-card)] px-8 py-4 text-base font-semibold text-[var(--text-primary)] shadow-sm ring-1 ring-inset ring-[var(--border-primary)] hover:bg-[var(--bg-hover)] transition-all"
                             >
                                 Conhecer recursos
                             </a>
                         </div>
-
-                        <div className="mt-14 flex items-center justify-center gap-8 text-sm text-gray-500 font-medium">
+                        
+                        <div className="mt-14 flex flex-wrap items-center justify-center gap-8 text-sm text-[var(--text-secondary)] font-medium">
                             <div className="flex items-center gap-2">
-                                <CheckCircle2 className="w-5 h-5 text-indigo-500" />
+                                <CheckCircle2 className="w-5 h-5 text-[var(--color-primary-500)]" />
                                 <span>100% Gratuito</span>
                             </div>
                             <div className="flex items-center gap-2">
-                                <CheckCircle2 className="w-5 h-5 text-indigo-500" />
+                                <CheckCircle2 className="w-5 h-5 text-[var(--color-primary-500)]" />
                                 <span>Seguro & Privado</span>
                             </div>
                             <div className="flex items-center gap-2">
-                                <CheckCircle2 className="w-5 h-5 text-indigo-500" />
-                                <span>Cancelamento Fácil</span>
+                                <CheckCircle2 className="w-5 h-5 text-[var(--color-primary-500)]" />
+                                <span>Sem propagandas</span>
                             </div>
                         </div>
 
@@ -111,44 +130,44 @@ export default function LandingPage() {
                 </section>
 
                 {/* Features Section */}
-                <section id="features" className="py-24 bg-gray-50/50">
+                <section id="features" className="py-24 bg-[var(--bg-secondary)] border-y border-[var(--border-primary)] transition-colors duration-300">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                         <div className="text-center max-w-2xl mx-auto mb-16">
-                            <h2 className="text-indigo-600 font-semibold tracking-wide uppercase text-sm mb-3">Tudo em um só lugar</h2>
-                            <p className="text-3xl font-bold text-gray-900 sm:text-4xl tracking-tight">O fim do caos na sua rotina</p>
-                            <p className="mt-4 text-lg text-gray-600">Projetado com paixão para te dar controle total sobre o que realmente importa na sua vida.</p>
+                            <h2 className="text-[var(--color-primary-600)] font-bold tracking-wide uppercase text-sm mb-3">Tudo em um só lugar</h2>
+                            <p className="text-3xl font-bold sm:text-4xl tracking-tight">O fim do caos na sua rotina</p>
+                            <p className="mt-4 text-lg text-[var(--text-secondary)]">Projetado com paixão para te dar controle total sobre o que realmente importa na sua vida.</p>
                         </div>
 
                         <div className="grid md:grid-cols-3 gap-8">
                             {/* Feature 1 */}
-                            <div className="bg-white rounded-3xl p-8 shadow-sm ring-1 ring-gray-100 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
-                                <div className="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-6">
+                            <div className="bg-[var(--bg-card)] rounded-3xl p-8 shadow-[var(--shadow-card)] ring-1 ring-[var(--border-primary)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1 transition-all duration-300">
+                                <div className="w-14 h-14 rounded-2xl bg-[var(--color-primary-50)] dark:bg-[var(--color-primary-900)] text-[var(--color-primary-600)] flex items-center justify-center mb-6">
                                     <PiggyBank className="w-7 h-7" />
                                 </div>
-                                <h3 className="text-xl font-bold text-gray-900 mb-3">Gastos sob controle</h3>
-                                <p className="text-gray-600 leading-relaxed">
+                                <h3 className="text-xl font-bold mb-3">Gastos sob controle</h3>
+                                <p className="text-[var(--text-secondary)] leading-relaxed">
                                     Adicione suas contas fixas, saiba exatamente para onde seu dinheiro vai todo mês e evite surpresas na fatura. O fim do sofrimento nas finanças.
                                 </p>
                             </div>
 
                             {/* Feature 2 */}
-                            <div className="bg-white rounded-3xl p-8 shadow-sm ring-1 ring-gray-100 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
-                                <div className="w-14 h-14 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center mb-6">
+                            <div className="bg-[var(--bg-card)] rounded-3xl p-8 shadow-[var(--shadow-card)] ring-1 ring-[var(--border-primary)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1 transition-all duration-300">
+                                <div className="w-14 h-14 rounded-2xl bg-[var(--color-primary-50)] dark:bg-[var(--color-primary-900)] text-[var(--color-primary-600)] flex items-center justify-center mb-6">
                                     <CalendarDays className="w-7 h-7" />
                                 </div>
-                                <h3 className="text-xl font-bold text-gray-900 mb-3">Agenda Inteligente</h3>
-                                <p className="text-gray-600 leading-relaxed">
+                                <h3 className="text-xl font-bold mb-3">Agenda Inteligente</h3>
+                                <p className="text-[var(--text-secondary)] leading-relaxed">
                                     Uma visão completa das suas tarefas, compromissos e datas de vencimento. Prazos não passarão mais batido na sua rotina corrida.
                                 </p>
                             </div>
 
                             {/* Feature 3 */}
-                            <div className="bg-white rounded-3xl p-8 shadow-sm ring-1 ring-gray-100 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
-                                <div className="w-14 h-14 rounded-2xl bg-pink-50 text-pink-600 flex items-center justify-center mb-6">
+                            <div className="bg-[var(--bg-card)] rounded-3xl p-8 shadow-[var(--shadow-card)] ring-1 ring-[var(--border-primary)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1 transition-all duration-300">
+                                <div className="w-14 h-14 rounded-2xl bg-[var(--color-primary-50)] dark:bg-[var(--color-primary-900)] text-[var(--color-primary-600)] flex items-center justify-center mb-6">
                                     <LayoutDashboard className="w-7 h-7" />
                                 </div>
-                                <h3 className="text-xl font-bold text-gray-900 mb-3">Visão Completa</h3>
-                                <p className="text-gray-600 leading-relaxed">
+                                <h3 className="text-xl font-bold mb-3">Visão Completa</h3>
+                                <p className="text-[var(--text-secondary)] leading-relaxed">
                                     Um dashboard impecável e minimalista. Em poucos segundos de manhã, você sabe tudo o que precisa ser feito e pago naquele dia.
                                 </p>
                             </div>
@@ -157,21 +176,21 @@ export default function LandingPage() {
                 </section>
 
                 {/* Call to Action */}
-                <section className="py-24 bg-white">
+                <section className="py-24 bg-[var(--bg-primary)] transition-colors duration-300">
                     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="bg-gradient-to-br from-indigo-900 to-purple-900 rounded-[2.5rem] p-10 md:p-16 text-center shadow-2xl overflow-hidden relative">
-                            {/* Decorative circles */}
-                            <div className="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 rounded-full bg-white/5 blur-3xl"></div>
-                            <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 rounded-full bg-white/5 blur-3xl"></div>
-
+                        <div className="bg-[var(--color-primary-800)] rounded-[2.5rem] p-10 md:p-16 text-center shadow-[var(--shadow-lg)] overflow-hidden relative">
+                             {/* Decorative circles */}
+                            <div className="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 rounded-full bg-white/5 blur-3xl mix-blend-overlay"></div>
+                            <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 rounded-full bg-black/20 blur-3xl mix-blend-overlay"></div>
+                            
                             <h2 className="text-3xl md:text-4xl font-bold text-white mb-6 relative z-10">Pronto para assumir as rédeas?</h2>
-                            <p className="text-indigo-100 text-lg md:text-xl max-w-2xl mx-auto mb-10 relative z-10">
+                            <p className="text-[var(--color-primary-100)] text-lg md:text-xl max-w-2xl mx-auto mb-10 relative z-10 font-medium">
                                 Junte-se a nós hoje. Leva menos de 2 minutos para se cadastrar e começar a organizar uma vida fantástica.
                             </p>
                             {!isAuthenticated && (
                                 <Link
                                     to="/register"
-                                    className="relative z-10 inline-flex items-center justify-center rounded-xl bg-white px-8 py-4 text-lg font-bold text-indigo-900 shadow-xl hover:bg-gray-50 transition-all hover:scale-105"
+                                    className="relative z-10 inline-flex items-center justify-center rounded-xl bg-white px-8 py-4 text-lg font-bold text-[var(--color-primary-800)] shadow-xl hover:bg-[var(--bg-secondary)] transition-all hover:scale-105"
                                 >
                                     Criar conta gratuitamente
                                 </Link>
@@ -183,16 +202,16 @@ export default function LandingPage() {
             </main>
 
             {/* Footer */}
-            <footer className="bg-gray-50 py-12 border-t border-gray-100">
+            <footer className="bg-[var(--bg-secondary)] py-12 border-t border-[var(--border-primary)] transition-colors duration-300">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col items-center">
                     <div className="flex items-center gap-2 mb-6 opacity-80">
-                        <div className="w-6 h-6 rounded bg-gray-900 flex items-center justify-center text-white font-bold text-xs">O</div>
-                        <span className="font-semibold text-gray-900">OrganizeLife</span>
+                        <div className="w-6 h-6 rounded bg-[var(--text-primary)] flex items-center justify-center text-[var(--bg-primary)] font-bold text-xs">O</div>
+                        <span className="font-semibold text-[var(--text-primary)]">OrganizeLife</span>
                     </div>
-                    <p className="text-gray-500 text-sm">
+                    <p className="text-[var(--text-secondary)] text-sm">
                         Desenvolvido com carinho para simplificar dias complexos.
                     </p>
-                    <p className="text-gray-400 text-xs mt-4">
+                    <p className="text-[var(--text-tertiary)] text-xs mt-4">
                         &copy; {new Date().getFullYear()} OrganizeLife. Todos os direitos reservados.
                     </p>
                 </div>
