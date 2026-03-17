@@ -41,6 +41,27 @@ class DashboardController extends Controller
             'bills_overdue' => $monthlyBills->where('status', MonthlyBill::STATUS_OVERDUE)->count(),
         ];
 
+        // INCOMES DO MÊS
+        $incomes = $user->incomes()
+            ->whereYear('expected_date', $year)
+            ->whereMonth('expected_date', $month)
+            ->get();
+
+        $financialSummary['total_incomes'] = $incomes->sum('amount');
+        $financialSummary['total_incomes_received'] = $incomes->where('status', 'received')->sum('amount');
+        
+        $financialSummary['budget_rules'] = [
+            'needs' => $user->budget_needs_percent ?? 50,
+            'wants' => $user->budget_wants_percent ?? 30,
+            'savings' => $user->budget_savings_percent ?? 20,
+        ];
+        
+        $financialSummary['budget_spent'] = [
+            'needs' => $monthlyBills->filter(fn($b) => $b->category?->budget_group === 'needs')->sum('expected_amount'),
+            'wants' => $monthlyBills->filter(fn($b) => $b->category?->budget_group === 'wants')->sum('expected_amount'),
+            'savings' => $monthlyBills->filter(fn($b) => $b->category?->budget_group === 'savings')->sum('expected_amount'),
+        ];
+
         //GASTOS POR CATEGORIA (para gráfico de pizza/rosca)
         //EXPLICAÇÃO:
         //  groupBy('category_id') agrupa as contas por categoria

@@ -34,31 +34,31 @@ export default function LoginPage() {
 
     return (
         <AuthLayout>
-            <h2 className="mb-1 text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
+            <h2 className="mb-1 text-2xl font-bold tracking-tight" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading)' }}>
                 Bem-vindo de volta
             </h2>
-            <p className="mb-6 text-sm" style={{ color: 'var(--text-tertiary)' }}>
-                Entre com suas credenciais para acessar sua conta
+            <p className="mb-8 text-[15px]" style={{ color: 'var(--text-tertiary)' }}>
+                Acesse seu painel para continuar
             </p>
 
             {error && (
                 <div
-                    className="mb-4 flex items-center gap-2 rounded-lg border px-4 py-3 text-sm"
+                    className="mb-5 flex items-center gap-2.5 rounded-xl border px-4 py-3 text-sm animate-in"
                     style={{
                         backgroundColor: 'var(--color-danger-50)',
                         borderColor: 'var(--color-danger-500)',
                         color: 'var(--color-danger-600)',
                     }}
                 >
-                    <AlertCircle size={16} />
+                    <AlertCircle size={16} className="shrink-0" />
                     <span>{error}</span>
                 </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-5">
                 {/* Email */}
                 <div>
-                    <label className="mb-1.5 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                    <label className="mb-2 block text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
                         E-mail
                     </label>
                     <input
@@ -67,18 +67,13 @@ export default function LoginPage() {
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="seu@email.com"
                         required
-                        className="focus-ring w-full rounded-lg border px-4 py-2.5 text-sm outline-none transition-colors"
-                        style={{
-                            backgroundColor: 'var(--bg-input)',
-                            borderColor: 'var(--border-primary)',
-                            color: 'var(--text-primary)',
-                        }}
+                        className="input-base"
                     />
                 </div>
 
                 {/* Password */}
                 <div>
-                    <label className="mb-1.5 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                    <label className="mb-2 block text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
                         Senha
                     </label>
                     <div className="relative">
@@ -88,17 +83,12 @@ export default function LoginPage() {
                             onChange={(e) => setPassword(e.target.value)}
                             placeholder="Sua senha"
                             required
-                            className="focus-ring w-full rounded-lg border px-4 py-2.5 pr-10 text-sm outline-none transition-colors"
-                            style={{
-                                backgroundColor: 'var(--bg-input)',
-                                borderColor: 'var(--border-primary)',
-                                color: 'var(--text-primary)',
-                            }}
+                            className="input-base pr-10"
                         />
                         <button
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors hover:text-[var(--text-primary)]"
                             style={{ color: 'var(--text-tertiary)' }}
                         >
                             {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -110,7 +100,8 @@ export default function LoginPage() {
                 <div className="flex justify-end">
                     <Link
                         to="/forgot-password"
-                        className="text-sm font-medium text-primary-600 hover:text-primary-500"
+                        className="text-sm font-semibold transition-colors"
+                        style={{ color: 'var(--color-primary-600)' }}
                     >
                         Esqueceu a senha?
                     </Link>
@@ -120,7 +111,7 @@ export default function LoginPage() {
                 <button
                     type="submit"
                     disabled={loading}
-                    className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-700 disabled:opacity-50"
+                    className="btn-primary w-full py-3 text-[15px] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     {loading ? (
                         <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
@@ -134,9 +125,9 @@ export default function LoginPage() {
             </form>
 
             {/* Register link */}
-            <p className="mt-6 text-center text-sm" style={{ color: 'var(--text-tertiary)' }}>
-                Nao tem uma conta?{' '}
-                <Link to="/register" className="font-medium text-primary-600 hover:text-primary-500">
+            <p className="mt-8 text-center text-sm" style={{ color: 'var(--text-tertiary)' }}>
+                Não tem uma conta?{' '}
+                <Link to="/register" className="font-semibold transition-colors" style={{ color: 'var(--color-primary-600)' }}>
                     Criar conta
                 </Link>
             </p>

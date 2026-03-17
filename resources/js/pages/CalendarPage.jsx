@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import AppLayout from '../components/layouts/AppLayout';
 import api from '../services/api';
 import {
@@ -11,14 +12,15 @@ import {
     Clock,
     Trash2,
     Repeat,
+    Wallet,
 } from 'lucide-react';
 
 const MONTH_NAMES = [
-    '', 'Janeiro', 'Fevereiro', 'Marco', 'Abril', 'Maio', 'Junho',
+    '', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
 ];
 
-const DAY_NAMES = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
+const DAY_NAMES = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 const STATUS_COLORS = {
     pending: 'var(--color-warning-600)',
@@ -54,6 +56,7 @@ export default function CalendarPage() {
     const [bills, setBills] = useState([]);
     const [recurringBills, setRecurringBills] = useState([]);
     const [events, setEvents] = useState([]);
+    const [incomes, setIncomes] = useState([]);
     const [loading, setLoading] = useState(true);
     const [year, setYear] = useState(new Date().getFullYear());
     const [month, setMonth] = useState(new Date().getMonth() + 1);
@@ -70,15 +73,17 @@ export default function CalendarPage() {
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            const [billsRes, eventsRes, recurringRes] = await Promise.all([
+            const [billsRes, eventsRes, recurringRes, incomesRes] = await Promise.all([
                 api.get('/monthly-bills', { params: { year, month } }),
                 api.get('/events'),
                 api.get('/recurring-bills'),
+                api.get('/incomes', { params: { year, month } }),
             ]);
             setBills(billsRes.data.data);
             setEvents(eventsRes.data.data);
             setRecurringBills(recurringRes.data.data.filter(rb => rb.is_active));
-        } catch { /* */ } finally { setLoading(false); }
+            setIncomes(incomesRes.data.data);
+        } catch (err) { console.error('Erro:', err); } finally { setLoading(false); }
     }, [year, month]);
 
     useEffect(() => { fetchData(); }, [fetchData]);
@@ -152,7 +157,7 @@ export default function CalendarPage() {
             } else if (event.recurrence_type === 'monthly') {
                 const dayOfMonth = startDate.getDate();
                 if (dayOfMonth <= daysInMonth) {
-                    const check = new Date(year, month - 1, dayOfMonth);
+                    const check = new Date(year, month - 1, dayOfMonth, 12, 0, 0);
                     if (check >= startDate && check <= recEnd) {
                         occurrences.push(dayOfMonth);
                     }
@@ -200,6 +205,7 @@ export default function CalendarPage() {
         for (let d = 1; d <= daysInMonth; d++) {
             const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
             const dayBills = bills.filter((b) => normalizeDate(b.due_date) === dateStr);
+            const dayIncomes = incomes.filter((i) => normalizeDate(i.expected_date) === dateStr);
             const dayEvents = events.filter((e) => {
                 // Eventos nao recorrentes: match por data
                 if (e.recurrence_type && e.recurrence_type !== 'none') return false;
@@ -224,11 +230,11 @@ export default function CalendarPage() {
                     _recurring: true,
                 }));
 
-            days.push({ day: d, date: dateStr, bills: dayBills, events: allEvents, virtualBills });
+            days.push({ day: d, date: dateStr, bills: dayBills, incomes: dayIncomes, events: allEvents, virtualBills });
         }
 
         return days;
-    }, [year, month, bills, events, recurringBills]);
+    }, [year, month, bills, events, recurringBills, incomes]);
 
     function prevMonth() {
         if (month === 1) { setMonth(12); setYear(year - 1); } else { setMonth(month - 1); }
@@ -289,7 +295,9 @@ export default function CalendarPage() {
             else { await api.post('/events', data); }
             setShowEventModal(false);
             fetchData();
-        } catch { /* */ }
+        } catch (err) {
+            console.error('Erro ao salvar evento:', err?.response?.data || err);
+        }
     }
 
     async function handleDeleteEvent(event) {
@@ -297,11 +305,11 @@ export default function CalendarPage() {
             ? 'Este é um evento recorrente. Deseja remover TODAS as ocorrências dele?'
             : 'Remover este evento?';
         if (!confirm(msg)) return;
-        try { await api.delete(`/events/${event.id}`); fetchData(); } catch { /* */ }
+        try { await api.delete(`/events/${event.id}`); fetchData(); } catch (err) { console.error('Erro:', err); }
     }
 
     async function handlePayBill(id) {
-        try { await api.patch(`/monthly-bills/${id}/pay`); fetchData(); } catch { /* */ }
+        try { await api.patch(`/monthly-bills/${id}/pay`); fetchData(); } catch (err) { console.error('Erro:', err); }
     }
 
     return (
@@ -309,8 +317,8 @@ export default function CalendarPage() {
             {/* Header */}
             <div className="mb-6 flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Calendario</h1>
-                    <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>Suas contas e eventos em um so lugar</p>
+                    <h1 className="text-2xl font-bold tracking-tight" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading)' }}>Calendário</h1>
+                    <p className="text-sm mt-1" style={{ color: 'var(--text-tertiary)' }}>Suas contas e eventos em um só lugar</p>
                 </div>
                 <div className="flex items-center gap-2">
                     <button onClick={prevMonth} className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-secondary)' }}>
@@ -333,7 +341,7 @@ export default function CalendarPage() {
                 <div className="flex flex-col gap-6 lg:flex-row">
                     {/* Calendar Grid */}
                     <div className="flex-1">
-                        <div className="rounded-xl border overflow-hidden" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-primary)' }}>
+                        <div className="rounded-2xl border overflow-hidden" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-primary)', boxShadow: 'var(--shadow-card)' }}>
                             {/* Day names header */}
                             <div className="grid grid-cols-7 border-b" style={{ borderColor: 'var(--border-primary)' }}>
                                 {DAY_NAMES.map((name) => (
@@ -369,6 +377,13 @@ export default function CalendarPage() {
                                                             <span className="truncate">{bill.name_snapshot}</span>
                                                         </div>
                                                     ))}
+                                                    {dayData.incomes.slice(0, 2).map((income) => (
+                                                        <div key={`i-${income.id}`} className="flex items-center gap-1 rounded px-1 py-0.5 text-[10px] font-medium truncate"
+                                                            style={{ backgroundColor: 'var(--color-success-600)', color: '#fff' }}>
+                                                            <Wallet size={8} className="shrink-0" />
+                                                            <span className="truncate">{income.name}</span>
+                                                        </div>
+                                                    ))}
                                                     {dayData.virtualBills?.slice(0, 1).map((vb) => (
                                                         <div key={vb.id} className="flex items-center gap-1 rounded px-1 py-0.5 text-[10px] font-medium truncate"
                                                             style={{ backgroundColor: 'var(--color-primary-50)', color: 'var(--color-primary-600)' }}>
@@ -383,9 +398,9 @@ export default function CalendarPage() {
                                                             <span className="truncate">{event.title}</span>
                                                         </div>
                                                     ))}
-                                                    {(dayData.bills.length + (dayData.virtualBills?.length || 0) + dayData.events.length > 4) && (
+                                                    {(dayData.bills.length + (dayData.virtualBills?.length || 0) + dayData.events.length + dayData.incomes.length > 5) && (
                                                         <p className="text-[9px] text-center" style={{ color: 'var(--text-tertiary)' }}>
-                                                            +{dayData.bills.length + (dayData.virtualBills?.length || 0) + dayData.events.length - 4} mais
+                                                            +{dayData.bills.length + (dayData.virtualBills?.length || 0) + dayData.events.length + dayData.incomes.length - 5} mais
                                                         </p>
                                                     )}
                                                 </div>
@@ -398,8 +413,8 @@ export default function CalendarPage() {
 
                         {/* Legenda */}
                         <div className="mt-3 flex flex-wrap gap-4 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: 'var(--color-success-600)' }} /> Renda/Pago</span>
                             <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: 'var(--color-warning-600)' }} /> Pendente</span>
-                            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: 'var(--color-success-600)' }} /> Pago</span>
                             <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: 'var(--color-danger-600)' }} /> Atrasado</span>
                             <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: 'var(--color-primary-600)' }} /> Evento</span>
                             <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: 'var(--color-primary-400)' }} /> Recorrente</span>
@@ -408,7 +423,7 @@ export default function CalendarPage() {
 
                     {/* Side panel — Day Detail */}
                     <div className="w-full lg:w-[320px]">
-                        <div className="sticky top-6 rounded-xl border p-5" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-primary)' }}>
+                        <div className="sticky top-6 rounded-2xl border p-5" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-primary)', boxShadow: 'var(--shadow-card)' }}>
                             {selectedDay ? (
                                 <>
                                     <div className="mb-4 flex items-center justify-between">
@@ -416,7 +431,7 @@ export default function CalendarPage() {
                                             {selectedDay} de {MONTH_NAMES[month]}
                                         </h3>
                                         <button onClick={() => openCreateEvent(selectedDay)}
-                                            className="flex items-center gap-1 rounded-lg bg-primary-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-primary-700">
+                                            className="btn-primary px-2.5 py-1.5 text-xs">
                                             <Plus size={12} /> Evento
                                         </button>
                                     </div>
@@ -448,6 +463,33 @@ export default function CalendarPage() {
                                                                     <Clock size={14} />
                                                                 </button>
                                                             )}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Rendas do dia */}
+                                    {selectedDayData?.incomes?.length > 0 && (
+                                        <div className="mb-4">
+                                            <p className="mb-2 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--color-success-600)' }}>Rendas</p>
+                                            <div className="space-y-2">
+                                                {selectedDayData.incomes.map((income) => (
+                                                    <div key={`inc-${income.id}`} className="flex items-center justify-between rounded-lg border px-3 py-2.5"
+                                                        style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-card)' }}>
+                                                        <div className="min-w-0">
+                                                            <p className="text-sm font-bold truncate" style={{ color: 'var(--color-success-600)' }}>
+                                                                {income.name}
+                                                            </p>
+                                                            <p className="text-xs font-medium uppercase mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
+                                                                {income.status === 'received' ? 'Recebido' : 'Pendente'}
+                                                            </p>
+                                                        </div>
+                                                        <div className="flex items-center gap-2 shrink-0">
+                                                            <span className="text-sm font-black" style={{ color: 'var(--color-success-600)' }}>
+                                                                {formatCurrency(income.amount)}
+                                                            </span>
                                                         </div>
                                                     </div>
                                                 ))}
@@ -517,7 +559,7 @@ export default function CalendarPage() {
                                         </div>
                                     )}
 
-                                    {selectedDayData?.bills.length === 0 && (selectedDayData?.virtualBills?.length || 0) === 0 && selectedDayData?.events.length === 0 && (
+                                    {selectedDayData?.bills.length === 0 && (selectedDayData?.incomes?.length || 0) === 0 && (selectedDayData?.virtualBills?.length || 0) === 0 && selectedDayData?.events.length === 0 && (
                                         <p className="py-8 text-center text-sm" style={{ color: 'var(--text-tertiary)' }}>
                                             Nada agendado para este dia
                                         </p>
@@ -537,15 +579,15 @@ export default function CalendarPage() {
             )}
 
             {/* Event Modal */}
-            {showEventModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={(e) => e.target === e.currentTarget && setShowEventModal(false)}>
-                    <div className="w-full max-w-md rounded-2xl border p-6" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-primary)' }}>
-                        <h3 className="mb-4 text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{editingEvent ? 'Editar Evento' : 'Novo Evento'}</h3>
+            {showEventModal && createPortal(
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={(e) => e.target === e.currentTarget && setShowEventModal(false)}>
+                    <div className="w-full max-w-md rounded-2xl border p-6 shadow-lg" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-primary)', boxShadow: 'var(--shadow-lg)' }}>
+                        <h3 className="mb-4 text-lg font-bold tracking-tight" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading)' }}>{editingEvent ? 'Editar Evento' : 'Novo Evento'}</h3>
                         <form onSubmit={handleEventSubmit} className="space-y-4">
-                            <Field label="Titulo" value={eventForm.title} onChange={(v) => setEventForm({ ...eventForm, title: v })} required />
-                            <Field label="Descricao" value={eventForm.description} onChange={(v) => setEventForm({ ...eventForm, description: v })} />
+                            <Field label="Título" value={eventForm.title} onChange={(v) => setEventForm({ ...eventForm, title: v })} required />
+                            <Field label="Descrição" value={eventForm.description} onChange={(v) => setEventForm({ ...eventForm, description: v })} />
                             <div className="grid grid-cols-2 gap-4">
-                                <Field label="Inicio" type="date" value={eventForm.start_date} onChange={(v) => setEventForm({ ...eventForm, start_date: v })} required />
+                                <Field label="Início" type="date" value={eventForm.start_date} onChange={(v) => setEventForm({ ...eventForm, start_date: v })} required />
                                 <Field label="Fim (opcional)" type="date" value={eventForm.end_date} onChange={(v) => setEventForm({ ...eventForm, end_date: v })} />
                             </div>
                             <div>
@@ -569,12 +611,12 @@ export default function CalendarPage() {
                             <div className="rounded-lg border p-4" style={{ borderColor: 'var(--border-primary)' }}>
                                 <label className="mb-2 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
                                     <Repeat size={14} className="inline mr-1" style={{ verticalAlign: '-2px' }} />
-                                    Recorrencia
+                                    Recorrência
                                 </label>
                                 <select value={eventForm.recurrence_type} onChange={(e) => setEventForm({ ...eventForm, recurrence_type: e.target.value })}
                                     className="focus-ring w-full rounded-lg border px-4 py-2.5 text-sm outline-none"
                                     style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-primary)', color: 'var(--text-primary)' }}>
-                                    <option value="none">Nao repete</option>
+                                    <option value="none">Não repete</option>
                                     <option value="daily">Diariamente</option>
                                     <option value="weekly">Semanalmente</option>
                                     <option value="biweekly">Quinzenalmente</option>
@@ -591,7 +633,7 @@ export default function CalendarPage() {
 
                                 {eventForm.recurrence_type !== 'none' && (
                                     <div className="mt-3">
-                                        <Field label="Repetir ate (opcional)" type="date" value={eventForm.recurrence_end}
+                                        <Field label="Repetir até (opcional)" type="date" value={eventForm.recurrence_end}
                                             onChange={(v) => setEventForm({ ...eventForm, recurrence_end: v })} />
                                     </div>
                                 )}
@@ -600,7 +642,7 @@ export default function CalendarPage() {
                                     <div className="mt-3">
                                         <label className="mb-1.5 block text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>Dias da semana</label>
                                         <div className="flex gap-1">
-                                            {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'].map((name, idx) => {
+                                            {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((name, idx) => {
                                                 const selected = eventForm.recurrence_days.includes(idx);
                                                 return (
                                                     <button key={idx} type="button"
@@ -627,11 +669,12 @@ export default function CalendarPage() {
 
                             <div className="flex justify-end gap-3 pt-2">
                                 <button type="button" onClick={() => setShowEventModal(false)} className="rounded-lg px-4 py-2.5 text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Cancelar</button>
-                                <button type="submit" className="rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700">{editingEvent ? 'Salvar' : 'Criar'}</button>
+                                <button type="submit" className="btn-primary px-4 py-2.5">{editingEvent ? 'Salvar' : 'Criar'}</button>
                             </div>
                         </form>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </AppLayout>
     );

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import AppLayout from '../components/layouts/AppLayout';
 import api from '../services/api';
 import { Plus, CalendarDays, Trash2, Pencil, Clock, MapPin } from 'lucide-react';
@@ -8,6 +9,11 @@ const PRIORITY_CONFIG = {
     2: { label: 'Normal', color: 'var(--color-primary-600)', bg: 'var(--color-primary-50)' },
     3: { label: 'Baixa', color: 'var(--color-success-600)', bg: 'var(--color-success-50)' },
 };
+
+function normalizeDate(dateStr) {
+    if (!dateStr) return '';
+    return String(dateStr).substring(0, 10);
+}
 
 export default function EventsPage() {
     const [events, setEvents] = useState([]);
@@ -21,7 +27,7 @@ export default function EventsPage() {
     async function fetchEvents() {
         setLoading(true);
         try { const res = await api.get('/events'); setEvents(res.data.data); }
-        catch { /* */ } finally { setLoading(false); }
+        catch (err) { console.error('Erro:', err); } finally { setLoading(false); }
     }
 
     async function handleSubmit(e) {
@@ -33,12 +39,12 @@ export default function EventsPage() {
             setShowModal(false); setEditing(null);
             setForm({ title: '', description: '', start_date: '', end_date: '', all_day: true, priority: 2, reminder_at: '' });
             fetchEvents();
-        } catch { /* */ }
+        } catch (err) { console.error('Erro:', err); }
     }
 
     async function handleDelete(event) {
         if (!confirm(`Remover o evento "${event.title}"?`)) return;
-        try { await api.delete(`/events/${event.id}`); fetchEvents(); } catch { /* */ }
+        try { await api.delete(`/events/${event.id}`); fetchEvents(); } catch (err) { console.error('Erro:', err); }
     }
 
     function openCreate() {
@@ -49,7 +55,15 @@ export default function EventsPage() {
 
     function openEdit(event) {
         setEditing(event);
-        setForm({ title: event.title, description: event.description || '', start_date: event.start_date, end_date: event.end_date || '', all_day: event.all_day, priority: event.priority, reminder_at: event.reminder_at || '' });
+        setForm({
+            title: event.title,
+            description: event.description || '',
+            start_date: normalizeDate(event.start_date),
+            end_date: normalizeDate(event.end_date),
+            all_day: event.all_day,
+            priority: event.priority,
+            reminder_at: event.reminder_at || ''
+        });
         setShowModal(true);
     }
 
@@ -69,10 +83,10 @@ export default function EventsPage() {
         <AppLayout>
             <div className="mb-6 flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Eventos</h1>
-                    <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>Datas importantes e lembretes</p>
+                    <h1 className="text-2xl font-bold tracking-tight" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading)' }}>Eventos</h1>
+                    <p className="text-sm mt-1" style={{ color: 'var(--text-tertiary)' }}>Datas importantes e lembretes</p>
                 </div>
-                <button onClick={openCreate} className="flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700">
+                <button onClick={openCreate} className="btn-primary px-4 py-2.5 active:scale-95">
                     <Plus size={18} /> Novo Evento
                 </button>
             </div>
@@ -114,10 +128,10 @@ export default function EventsPage() {
                 </>
             )}
 
-            {showModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                    <div className="w-full max-w-md rounded-2xl border p-6" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-primary)' }}>
-                        <h3 className="mb-4 text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{editing ? 'Editar Evento' : 'Novo Evento'}</h3>
+            {showModal && createPortal(
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                    <div className="w-full max-w-md rounded-2xl border p-6 shadow-lg" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-primary)', boxShadow: 'var(--shadow-lg)' }}>
+                        <h3 className="mb-4 text-lg font-bold tracking-tight" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading)' }}>{editing ? 'Editar Evento' : 'Novo Evento'}</h3>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <Field label="Titulo" value={form.title} onChange={(v) => setForm({ ...form, title: v })} required />
                             <Field label="Descricao" value={form.description} onChange={(v) => setForm({ ...form, description: v })} />
@@ -143,11 +157,12 @@ export default function EventsPage() {
                             </div>
                             <div className="flex justify-end gap-3 pt-2">
                                 <button type="button" onClick={() => setShowModal(false)} className="rounded-lg px-4 py-2.5 text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Cancelar</button>
-                                <button type="submit" className="rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700">{editing ? 'Salvar' : 'Criar'}</button>
+                                <button type="submit" className="btn-primary px-4 py-2.5">{editing ? 'Salvar' : 'Criar'}</button>
                             </div>
                         </form>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </AppLayout>
     );
@@ -156,7 +171,7 @@ export default function EventsPage() {
 function EventCard({ event, onEdit, onDelete, formatDate }) {
     const priority = PRIORITY_CONFIG[event.priority] || PRIORITY_CONFIG[2];
     return (
-        <div className="flex items-center gap-4 rounded-xl border px-5 py-4" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-primary)', boxShadow: 'var(--shadow-card)' }}>
+        <div className="flex items-center gap-4 rounded-2xl border px-5 py-4 transition-all duration-300 hover:-translate-y-0.5" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-primary)', boxShadow: 'var(--shadow-card)' }}>
             <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-lg" style={{ backgroundColor: priority.bg, color: priority.color }}>
                 <span className="text-xs font-bold leading-none">{new Date(event.start_date).getDate()}</span>
                 <span className="text-[10px] uppercase leading-none mt-0.5">{new Date(event.start_date).toLocaleDateString('pt-BR', { month: 'short' })}</span>

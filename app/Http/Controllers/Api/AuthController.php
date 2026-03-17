@@ -144,6 +144,9 @@ class AuthController extends Controller
                 'user' => $user,
                 'avatar_url' => $user->getAvatarUrl(),
                 'has_2fa' => $user->hasTwoFactorEnabled(),
+                'budget_needs_percent' => $user->budget_needs_percent ?? 50,
+                'budget_wants_percent' => $user->budget_wants_percent ?? 30,
+                'budget_savings_percent' => $user->budget_savings_percent ?? 20,
             ],
         ]);
     }
@@ -158,6 +161,9 @@ class AuthController extends Controller
             'name' => ['sometimes', 'string', 'max:255'],
             'avatar' => ['nullable'],
             'theme_color' => ['sometimes', 'string', 'max:20'],
+            'budget_needs_percent' => ['sometimes', 'numeric', 'min:0', 'max:100'],
+            'budget_wants_percent' => ['sometimes', 'numeric', 'min:0', 'max:100'],
+            'budget_savings_percent' => ['sometimes', 'numeric', 'min:0', 'max:100'],
         ]);
 
         $user = $request->user();
@@ -168,6 +174,16 @@ class AuthController extends Controller
 
         if ($request->filled('theme_color')) {
             $user->theme_color = $request->input('theme_color');
+        }
+
+        if ($request->has('budget_needs_percent')) {
+            $user->budget_needs_percent = $request->input('budget_needs_percent');
+        }
+        if ($request->has('budget_wants_percent')) {
+            $user->budget_wants_percent = $request->input('budget_wants_percent');
+        }
+        if ($request->has('budget_savings_percent')) {
+            $user->budget_savings_percent = $request->input('budget_savings_percent');
         }
 
         // Avatar: pode ser file upload (imagem) ou string (cor hex)
@@ -184,7 +200,12 @@ class AuthController extends Controller
             $path = $request->file('avatar')->store('avatars', 'public');
             $user->avatar = $path;
         } elseif ($request->filled('avatar')) {
-            // String (cor hex ou outro identificador)
+            // String (cor hex) — valida formato para segurança
+            $request->validate([
+                'avatar' => ['string', 'max:20', 'regex:/^#[a-fA-F0-9]{3,8}$/'],
+            ], [
+                'avatar.regex' => 'Formato de cor inválido. Use formato hex (ex: #FF5733).',
+            ]);
             $user->avatar = $request->input('avatar');
         }
 

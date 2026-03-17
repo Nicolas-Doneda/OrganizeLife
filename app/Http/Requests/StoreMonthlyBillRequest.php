@@ -71,6 +71,19 @@ class StoreMonthlyBillRequest extends FormRequest
 
             'paid_amount' => ['nullable', 'numeric', 'min:0', 'max:9999999999.99'],
             'notes' => ['nullable', 'string', 'max:1000'],
+
+            //wallet_id: carteira/forma de pagamento (opcional)
+            'wallet_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('wallets', 'id')
+                    ->where('user_id', $this->user()->id)
+                    ->whereNull('deleted_at'),
+            ],
+
+            // Installment properties
+            'is_installment' => ['sometimes', 'boolean'],
+            'installments_count' => ['required_if:is_installment,true', 'integer', 'min:2', 'max:120'],
         ];
     }
 
@@ -90,6 +103,9 @@ class StoreMonthlyBillRequest extends FormRequest
             'category_id.exists' => 'Categoria não encontrada.',
             'status.in' => 'Status inválido. Use: pending, paid, overdue ou canceled.',
             'notes.max' => 'As observações podem ter no máximo 1000 caracteres.',
+            'installments_count.required_if' => 'O número de parcelas é obrigatório.',
+            'installments_count.min' => 'O número de parcelas deve ser pelo menos 2.',
+            'installments_count.max' => 'O limite máximo é de 120 parcelas.',
         ];
     }
 }

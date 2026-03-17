@@ -28,6 +28,9 @@ class User extends Authenticatable implements MustVerifyEmail
         'two_factor_secret',
         'two_factor_recovery_codes',
         'two_factor_confirmed_at',
+        'budget_needs_percent',
+        'budget_wants_percent',
+        'budget_savings_percent',
     ];
 
     //HIDDEN (Segurança)
@@ -65,6 +68,13 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(Category::class);
     }
 
+    //EXPLICAÇÃO: Um usuário TEM MUITAS rendas
+    //Uso: $user->incomes
+    public function incomes()
+    {
+        return $this->hasMany(Income::class);
+    }
+
     //EXPLICAÇÃO: Um usuário TEM MUITAS contas recorrentes
     //Uso: $user->recurringBills
     public function recurringBills()
@@ -84,6 +94,13 @@ class User extends Authenticatable implements MustVerifyEmail
     public function events()
     {
         return $this->hasMany(Event::class);
+    }
+
+    //EXPLICAÇÃO: Um usuário TEM MUITAS carteiras
+    //Uso: $user->wallets
+    public function wallets()
+    {
+        return $this->hasMany(Wallet::class);
     }
 
     //MÉTODOS AUXILIARES (helpers)

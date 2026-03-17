@@ -103,6 +103,9 @@ class RecurringBillController extends Controller
             ->recurringBills()
             ->findOrFail($id);
 
+        // Remove (soft delete) as contas mensais PENDENTES que foram geradas por essa recorrente
+        $bill->monthlyBills()->where('status', 'pending')->delete();
+
         $bill->delete();
 
         return response()->json([

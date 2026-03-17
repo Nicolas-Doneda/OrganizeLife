@@ -111,7 +111,7 @@ class EventController extends Controller
     //  Útil para o widget "Próximos Eventos" no dashboard
     public function upcoming(Request $request): JsonResponse
     {
-        $limit = $request->integer('limit', 10);
+        $limit = min($request->integer('limit', 10), 50);
 
         $events = $request->user()
             ->events()

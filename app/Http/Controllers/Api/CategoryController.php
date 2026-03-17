@@ -22,7 +22,14 @@ class CategoryController extends Controller
     {
         $categories = $request->user()
             ->categories()
-            ->withCount(['recurringBills', 'monthlyBills'])
+            ->withCount([
+                'recurringBills' => function ($query) {
+                    $query->where('active', true);
+                },
+                'monthlyBills' => function ($query) {
+                    $query->where('status', '!=', 'canceled');
+                }
+            ])
             ->orderBy('name')
             ->get();
 
@@ -59,7 +66,14 @@ class CategoryController extends Controller
     {
         $category = $request->user()
             ->categories()
-            ->withCount(['recurringBills', 'monthlyBills'])
+            ->withCount([
+                'recurringBills' => function ($query) {
+                    $query->where('active', true);
+                },
+                'monthlyBills' => function ($query) {
+                    $query->where('status', '!=', 'canceled');
+                }
+            ])
             ->findOrFail($id);
 
         return response()->json([

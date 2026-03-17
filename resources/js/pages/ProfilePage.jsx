@@ -15,14 +15,17 @@ function isImageAvatar(avatar) {
 }
 
 export default function ProfilePage() {
-    const { user, fetchUser } = useAuth();
+    const { user, avatar_url, fetchUser } = useAuth();
     const [name, setName] = useState(user?.name || '');
+    const [budgetNeeds, setBudgetNeeds] = useState(user?.budget_needs_percent ?? 50);
+    const [budgetWants, setBudgetWants] = useState(user?.budget_wants_percent ?? 30);
+    const [budgetSavings, setBudgetSavings] = useState(user?.budget_savings_percent ?? 20);
     const [avatarColor, setAvatarColor] = useState(
         isImageAvatar(user?.avatar) ? '#6366f1' : (user?.avatar || '#6366f1')
     );
     const [avatarFile, setAvatarFile] = useState(null);
     const [avatarPreview, setAvatarPreview] = useState(
-        isImageAvatar(user?.avatar) ? `/storage/${user.avatar}` : null
+        isImageAvatar(user?.avatar) ? (avatar_url ?? null) : null
     );
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
@@ -99,6 +102,9 @@ export default function ProfilePage() {
                 const formData = new FormData();
                 formData.append('name', name);
                 formData.append('avatar', avatarFile);
+                formData.append('budget_needs_percent', budgetNeeds);
+                formData.append('budget_wants_percent', budgetWants);
+                formData.append('budget_savings_percent', budgetSavings);
                 await api.post('/auth/profile', formData, {
                     headers: { 'Content-Type': 'multipart/form-data' },
                     params: { _method: 'PUT' },
@@ -107,6 +113,9 @@ export default function ProfilePage() {
                 await api.put('/auth/profile', {
                     name,
                     avatar: avatarPreview ? undefined : avatarColor,
+                    budget_needs_percent: budgetNeeds,
+                    budget_wants_percent: budgetWants,
+                    budget_savings_percent: budgetSavings,
                 });
             }
             await fetchUser();
@@ -122,17 +131,17 @@ export default function ProfilePage() {
     return (
         <AppLayout>
             <div className="mx-auto max-w-2xl">
-                <h1 className="mb-1 text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
-                    Configuracoes
+                <h1 className="mb-1 text-2xl font-bold tracking-tight" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading)' }}>
+                    Configurações
                 </h1>
                 <p className="mb-8 text-sm" style={{ color: 'var(--text-tertiary)' }}>
-                    Gerencie seu perfil e preferencias
+                    Gerencie seu perfil e preferências
                 </p>
 
                 <form onSubmit={handleSave}>
                     {/* Avatar */}
-                    <div className="mb-8 rounded-xl border p-6" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-primary)' }}>
-                        <h2 className="mb-4 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Avatar</h2>
+                    <div className="mb-8 rounded-2xl border p-6" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-primary)', boxShadow: 'var(--shadow-card)' }}>
+                        <h2 className="mb-4 text-sm font-semibold tracking-tight" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading)' }}>Avatar</h2>
                         <div className="flex items-start gap-6">
                             {/* Avatar Preview */}
                             <div className="relative group">
@@ -216,8 +225,8 @@ export default function ProfilePage() {
                     </div>
 
                     {/* Informacoes */}
-                    <div className="mb-8 rounded-xl border p-6" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-primary)' }}>
-                        <h2 className="mb-4 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Informacoes</h2>
+                    <div className="mb-8 rounded-2xl border p-6" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-primary)', boxShadow: 'var(--shadow-card)' }}>
+                        <h2 className="mb-4 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Informações</h2>
                         <div className="space-y-4">
                             <div>
                                 <label className="mb-1.5 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Nome</label>
@@ -240,15 +249,52 @@ export default function ProfilePage() {
                                     style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-primary)', color: 'var(--text-secondary)' }}
                                 />
                                 <p className="mt-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                                    O e-mail nao pode ser alterado por seguranca
+                                    O e-mail não pode ser alterado por segurança
                                 </p>
                             </div>
                         </div>
                     </div>
 
+                    {/* Regra de Orçamento */}
+                    <div className="mb-8 rounded-2xl border p-6" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-primary)', boxShadow: 'var(--shadow-card)' }}>
+                        <h2 className="mb-1 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Orçamento Inteligente</h2>
+                        <p className="mb-4 text-xs" style={{ color: 'var(--text-tertiary)' }}>Defina como você quer dividir seus ganhos de forma ideal (Total alvo: 100%).</p>
+                        <div className="space-y-5">
+                            <div>
+                                <div className="flex justify-between mb-1.5">
+                                    <label className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Gastos Essenciais (Needs)</label>
+                                    <span className="text-sm font-bold" style={{ color: 'var(--color-primary-600)' }}>{budgetNeeds}%</span>
+                                </div>
+                                <input type="range" min="0" max="100" value={budgetNeeds} onChange={(e) => setBudgetNeeds(parseInt(e.target.value))} className="w-full h-2 bg-[var(--bg-input)] rounded-lg appearance-none cursor-pointer accent-primary-600" />
+                                <p className="mt-1.5 text-[11px]" style={{ color: 'var(--text-tertiary)' }}>Moradia, contas básicas, alimentação, transporte.</p>
+                            </div>
+                            <div>
+                                <div className="flex justify-between mb-1.5">
+                                    <label className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Estilo de Vida (Wants)</label>
+                                    <span className="text-sm font-bold" style={{ color: 'var(--color-warning-600)' }}>{budgetWants}%</span>
+                                </div>
+                                <input type="range" min="0" max="100" value={budgetWants} onChange={(e) => setBudgetWants(parseInt(e.target.value))} className="w-full h-2 bg-[var(--bg-input)] rounded-lg appearance-none cursor-pointer accent-warning-600" />
+                                <p className="mt-1.5 text-[11px]" style={{ color: 'var(--text-tertiary)' }}>Lazer, restaurantes, hobbies, assinaturas.</p>
+                            </div>
+                            <div>
+                                <div className="flex justify-between mb-1.5">
+                                    <label className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Poupança e Investimentos (Savings)</label>
+                                    <span className="text-sm font-bold" style={{ color: 'var(--color-success-600)' }}>{budgetSavings}%</span>
+                                </div>
+                                <input type="range" min="0" max="100" value={budgetSavings} onChange={(e) => setBudgetSavings(parseInt(e.target.value))} className="w-full h-2 bg-[var(--bg-input)] rounded-lg appearance-none cursor-pointer accent-success-500" />
+                                <p className="mt-1.5 text-[11px]" style={{ color: 'var(--text-tertiary)' }}>Reserva de emergência, aposentadoria, objetivos.</p>
+                            </div>
+                            {budgetNeeds + budgetWants + budgetSavings !== 100 && (
+                                <div className="rounded-lg px-3 py-2 text-xs font-semibold" style={{ backgroundColor: 'var(--color-danger-50)', color: 'var(--color-danger-600)' }}>
+                                    Atenção: A soma das categorias é de {budgetNeeds + budgetWants + budgetSavings}%. O sistema usa as regras assumindo que os gastos não devem passar desses limites em relação à sua renda total.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
                     {/* Conta - 2FA */}
-                    <div className="mb-8 rounded-xl border p-6" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-primary)' }}>
-                        <h2 className="mb-4 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Autenticacao de dois fatores</h2>
+                    <div className="mb-8 rounded-2xl border p-6" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-primary)', boxShadow: 'var(--shadow-card)' }}>
+                        <h2 className="mb-4 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Autenticação de dois fatores</h2>
 
                         {/* Estado: 2FA desativado */}
                         {!user?.two_factor_enabled && !twoFaData && (
@@ -256,15 +302,14 @@ export default function ProfilePage() {
                                 <div>
                                     <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Proteja sua conta</p>
                                     <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                                        Adicione uma camada extra de seguranca com Google Authenticator
+                                        Adicione uma camada extra de segurança com Google Authenticator
                                     </p>
                                 </div>
                                 <button
                                     type="button"
                                     onClick={handleEnable2FA}
                                     disabled={saving}
-                                    className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 transition-colors"
-                                >
+                                    className="btn-primary px-4 py-2">
                                     Ativar 2FA
                                 </button>
                             </div>
@@ -275,7 +320,7 @@ export default function ProfilePage() {
                             <div className="space-y-4">
                                 <div className="rounded-lg border p-4" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-hover)' }}>
                                     <p className="mb-3 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                                        1. Abra o Google Authenticator e escaneie o QR Code ou copie o codigo abaixo:
+                                        1. Abra o Google Authenticator e escaneie o QR Code ou copie o código abaixo:
                                     </p>
                                     <div className="flex justify-center mb-4">
                                         <div className="rounded-xl bg-white p-4 shadow-sm">
@@ -288,7 +333,7 @@ export default function ProfilePage() {
                                         </div>
                                     </div>
                                     <p className="mb-2 text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                                        Ou copie o codigo manualmente:
+                                        Ou copie o código manualmente:
                                     </p>
                                     <div className="flex items-center gap-2 rounded-lg border px-3 py-2 mb-3" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-input)' }}>
                                         <code className="flex-1 text-xs break-all" style={{ color: 'var(--text-secondary)' }}>
@@ -301,7 +346,7 @@ export default function ProfilePage() {
                                         </button>
                                     </div>
                                     <p className="mb-2 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                                        2. Digite o codigo de 6 digitos do app:
+                                        2. Digite o código de 6 dígitos do app:
                                     </p>
                                     <div className="flex gap-2">
                                         <input
@@ -323,7 +368,7 @@ export default function ProfilePage() {
                                 {/* Codigos de recuperacao */}
                                 <div className="rounded-lg border p-4" style={{ borderColor: 'var(--color-warning-300)', backgroundColor: 'var(--color-warning-50)' }}>
                                     <p className="mb-2 text-xs font-semibold" style={{ color: 'var(--color-warning-700)' }}>
-                                        Salve seus codigos de recuperacao em local seguro:
+                                        Salve seus códigos de recuperação em local seguro:
                                     </p>
                                     <div className="grid grid-cols-2 gap-1">
                                         {twoFaData.recovery_codes?.map((code, i) => (
@@ -340,7 +385,7 @@ export default function ProfilePage() {
                                 <div>
                                     <p className="text-sm font-medium" style={{ color: 'var(--color-success-600)' }}>✓ 2FA ativo</p>
                                     <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                                        Sua conta esta protegida com autenticacao de dois fatores
+                                        Sua conta está protegida com autenticação de dois fatores
                                     </p>
                                 </div>
                                 <button
@@ -366,7 +411,7 @@ export default function ProfilePage() {
                     <button
                         type="submit"
                         disabled={saving}
-                        className="flex items-center gap-2 rounded-lg bg-primary-600 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-700 disabled:opacity-50"
+                        className="btn-primary px-6 py-2.5 disabled:opacity-50"
                     >
                         {saving ? (
                             <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
@@ -375,7 +420,7 @@ export default function ProfilePage() {
                         ) : (
                             <Save size={16} />
                         )}
-                        {saved ? 'Salvo!' : 'Salvar alteracoes'}
+                        {saved ? 'Salvo!' : 'Salvar alterações'}
                     </button>
                 </form>
             </div>

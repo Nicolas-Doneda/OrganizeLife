@@ -19,6 +19,13 @@ class UpdateMonthlyBillRequest extends FormRequest
             'name_snapshot' => ['sometimes', 'string', 'max:120'],
             'expected_amount' => ['sometimes', 'numeric', 'min:0', 'max:9999999999.99'],
             'due_date' => ['sometimes', 'date', 'after_or_equal:2020-01-01'],
+            'recurring_bill_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('recurring_bills', 'id')
+                    ->where('user_id', $this->user()->id)
+                    ->whereNull('deleted_at'),
+            ],
 
             'category_id' => [
                 'nullable',
@@ -36,6 +43,14 @@ class UpdateMonthlyBillRequest extends FormRequest
 
             'paid_amount' => ['nullable', 'numeric', 'min:0', 'max:9999999999.99'],
             'notes' => ['nullable', 'string', 'max:1000'],
+
+            'wallet_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('wallets', 'id')
+                    ->where('user_id', $this->user()->id)
+                    ->whereNull('deleted_at'),
+            ],
         ];
     }
 

@@ -26,6 +26,10 @@ class MonthlyBill extends Model
         'paid_at',
         'status',
         'notes',
+        'wallet_id',
+        'installment_group_id',
+        'installment_index',
+        'installment_total',
     ];
 
     //CASTS
@@ -85,6 +89,18 @@ class MonthlyBill extends Model
     public function category()
     {
         return $this->belongsTo(Category::class);
+    }
+
+    //EXPLICAÇÃO: Uma conta mensal PODE pertencer a uma carteira
+    //Uso: $monthlyBill->wallet
+    public function wallet()
+    {
+        return $this->belongsTo(Wallet::class);
+    }
+
+    public function isInstallment(): bool
+    {
+        return !empty($this->installment_group_id);
     }
 
     //SCOPES (filtros reutilizáveis)
@@ -147,6 +163,17 @@ class MonthlyBill extends Model
             'status' => self::STATUS_PAID,
             'paid_amount' => $paidAmount ?? $this->expected_amount,
             'paid_at' => now(),
+        ]);
+    }
+
+    //EXPLICAÇÃO: Desfaz o pagamento e marca como PENDENTE novamente
+    //Uso: $monthlyBill->markAsPending()
+    public function markAsPending(): void
+    {
+        $this->update([
+            'status' => self::STATUS_PENDING,
+            'paid_amount' => null,
+            'paid_at' => null,
         ]);
     }
 

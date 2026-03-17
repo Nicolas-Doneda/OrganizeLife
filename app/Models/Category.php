@@ -16,6 +16,7 @@ class Category extends Model
         'name',
         'color',
         'icon',
+        'budget_group',
     ];
 
     //CASTS

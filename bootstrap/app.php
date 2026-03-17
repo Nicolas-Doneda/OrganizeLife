@@ -20,6 +20,15 @@ return Application::configure(basePath: dirname(__DIR__))
         // Confia nos proxies da Render para evitar erro de Mixed Content (HTTP em HTTPS)
         $middleware->trustProxies(at: '*');
 
+        // EXPLICAÇÃO: Exclui rotas da API da verificação CSRF.
+        // A proteção CSRF é projetada para autenticação baseada em sessão/cookies.
+        // Como a API usa Bearer tokens do Sanctum, CSRF é redundante e
+        // pode bloquear DELETE/POST/PUT/PATCH quando o cookie XSRF-TOKEN
+        // não é sincronizado corretamente.
+        $middleware->validateCsrfTokens(except: [
+            'api/*',
+        ]);
+
         // EXPLICAÇÃO: Registra o middleware 'ability' do Sanctum
         // Usado para verificar se o token tem abilities específicas
         // Ex: 'ability:*' garante que o token NÃO é um temp_token limitado do 2FA

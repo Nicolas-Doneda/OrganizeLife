@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import AppLayout from '../../components/layouts/AppLayout';
 import api from '../../services/api';
 import { Plus, Repeat, Trash2, Pencil, ToggleLeft, ToggleRight } from 'lucide-react';
@@ -21,7 +22,7 @@ export default function RecurringBillsPage() {
         try {
             const res = await api.get('/recurring-bills');
             setBills(res.data.data);
-        } catch { /* */ } finally { setLoading(false); }
+        } catch (err) { console.error('Erro:', err); } finally { setLoading(false); }
     }
 
     async function handleSubmit(e) {
@@ -34,19 +35,19 @@ export default function RecurringBillsPage() {
             setEditingBill(null);
             setForm({ name: '', due_day: '', expected_amount: '', category_id: '' });
             fetchBills();
-        } catch { /* */ }
+        } catch (err) { console.error('Erro:', err); }
     }
 
     async function handleToggle(bill) {
         try {
             await api.patch(`/recurring-bills/${bill.id}/${bill.active ? 'deactivate' : 'activate'}`);
             fetchBills();
-        } catch { /* */ }
+        } catch (err) { console.error('Erro:', err); }
     }
 
     async function handleDelete(bill) {
         if (!confirm('Remover esta conta recorrente?')) return;
-        try { await api.delete(`/recurring-bills/${bill.id}`); fetchBills(); } catch { /* */ }
+        try { await api.delete(`/recurring-bills/${bill.id}`); fetchBills(); } catch (err) { console.error('Erro:', err); }
     }
 
     function openCreate() {
@@ -65,10 +66,10 @@ export default function RecurringBillsPage() {
         <AppLayout>
             <div className="mb-6 flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Contas Recorrentes</h1>
-                    <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>Gerencie suas contas fixas mensais</p>
+                    <h1 className="text-2xl font-bold tracking-tight" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading)' }}>Contas Recorrentes</h1>
+                    <p className="text-sm mt-1" style={{ color: 'var(--text-tertiary)' }}>Gerencie suas contas fixas mensais</p>
                 </div>
-                <button onClick={openCreate} className="flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700">
+                <button onClick={openCreate} className="btn-primary px-4 py-2.5 active:scale-95">
                     <Plus size={18} /> Nova Recorrente
                 </button>
             </div>
@@ -85,7 +86,7 @@ export default function RecurringBillsPage() {
             ) : (
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {bills.map((bill) => (
-                        <div key={bill.id} className="rounded-xl border p-5" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-primary)', boxShadow: 'var(--shadow-card)', opacity: bill.active ? 1 : 0.6 }}>
+                        <div key={bill.id} className="rounded-2xl border p-5 transition-all duration-300 hover:-translate-y-1" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-primary)', boxShadow: 'var(--shadow-card)', opacity: bill.active ? 1 : 0.6 }}>
                             <div className="mb-3 flex items-center justify-between">
                                 <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{bill.name}</h3>
                                 <button onClick={() => handleToggle(bill)} title={bill.active ? 'Desativar' : 'Ativar'} style={{ color: bill.active ? 'var(--color-success-500)' : 'var(--text-tertiary)' }}>
@@ -111,10 +112,10 @@ export default function RecurringBillsPage() {
                 </div>
             )}
 
-            {showModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                    <div className="w-full max-w-md rounded-2xl border p-6" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-primary)' }}>
-                        <h3 className="mb-4 text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{editingBill ? 'Editar Recorrente' : 'Nova Recorrente'}</h3>
+            {showModal && createPortal(
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                    <div className="w-full max-w-md rounded-2xl border p-6 shadow-lg" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-primary)', boxShadow: 'var(--shadow-lg)' }}>
+                        <h3 className="mb-4 text-lg font-bold tracking-tight" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading)' }}>{editingBill ? 'Editar Recorrente' : 'Nova Recorrente'}</h3>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <Field label="Nome" value={form.name} onChange={(v) => setForm({ ...form, name: v })} required />
                             <div className="grid grid-cols-2 gap-4">
@@ -123,11 +124,12 @@ export default function RecurringBillsPage() {
                             </div>
                             <div className="flex justify-end gap-3 pt-2">
                                 <button type="button" onClick={() => setShowModal(false)} className="rounded-lg px-4 py-2.5 text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Cancelar</button>
-                                <button type="submit" className="rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700">{editingBill ? 'Salvar' : 'Criar'}</button>
+                                <button type="submit" className="btn-primary px-4 py-2.5">{editingBill ? 'Salvar' : 'Criar'}</button>
                             </div>
                         </form>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </AppLayout>
     );

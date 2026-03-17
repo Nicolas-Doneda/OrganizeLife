@@ -4,96 +4,105 @@
 @source '../**/*.js';
 
 /* ============================================================
-   DESIGN SYSTEM — OrganizeLife
-   Premium Dark/Light mode via CSS custom properties
+   DESIGN SYSTEM — OrganizeLife v2
+   Premium Dark/Light mode — Inspired by claude-cookbooks aesthetics
+   Typography: Plus Jakarta Sans (headings) + Geist (body)
+   Palette: Teal-green base + Amber/Gold accents
    ============================================================ */
 
 @theme {
-    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    --font-sans: 'Geist', 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+    --font-heading: 'Plus Jakarta Sans', 'Geist', ui-sans-serif, system-ui, sans-serif;
 
-    /* Primary — Emerald/Pine (sofisticado e voltado a finanças) */
-    --color-primary-50: #ecfdf5;
-    --color-primary-100: #d1fae5;
-    --color-primary-200: #a7f3d0;
-    --color-primary-300: #6ee7b7;
-    --color-primary-400: #34d399;
-    --color-primary-500: #10b981;
-    --color-primary-600: #059669;
-    --color-primary-700: #047857;
-    --color-primary-800: #065f46;
-    --color-primary-900: #064e3b;
+    /* Primary — Teal / Sophisticated Green */
+    --color-primary-50: #effefb;
+    --color-primary-100: #c8fff4;
+    --color-primary-200: #91feea;
+    --color-primary-300: #52f5dc;
+    --color-primary-400: #20e0c8;
+    --color-primary-500: #0bc4af;
+    --color-primary-600: #069e8f;
+    --color-primary-700: #097e74;
+    --color-primary-800: #0c645e;
+    --color-primary-900: #0f534e;
 
-    /* Success — Green */
-    --color-success-50: #f0fdf4;
-    --color-success-500: #22c55e;
-    --color-success-600: #16a34a;
+    /* Success — Emerald */
+    --color-success-50: #ecfdf5;
+    --color-success-500: #10b981;
+    --color-success-600: #059669;
 
-    /* Danger — Rose */
-    --color-danger-50: #fff1f2;
-    --color-danger-500: #f43f5e;
-    --color-danger-600: #e11d48;
+    /* Danger — Coral/Rose */
+    --color-danger-50: #fff5f5;
+    --color-danger-500: #ef4444;
+    --color-danger-600: #dc2626;
 
-    /* Warning — Amber */
+    /* Warning — Amber/Gold */
     --color-warning-50: #fffbeb;
     --color-warning-300: #fcd34d;
     --color-warning-500: #f59e0b;
     --color-warning-600: #d97706;
+
+    /* Accent — Gold */
+    --color-accent-400: #fbbf24;
+    --color-accent-500: #f59e0b;
 }
 
 /* ============================================================
-   LIGHT MODE — Pearl & Zinc
+   LIGHT MODE — Warm & Refined
    ============================================================ */
 :root {
-    --bg-primary: #fafafa;
-    --bg-secondary: #f4f4f5;
-    --bg-tertiary: #e4e4e7;
-    --bg-sidebar: #fafafa;
+    --bg-primary: #fafbfc;
+    --bg-secondary: #f3f4f6;
+    --bg-tertiary: #ffffff;
+    --bg-sidebar: #ffffff;
     --bg-card: #ffffff;
-    --bg-input: #ffffff;
-    --bg-hover: #f4f4f5;
-    --bg-active: #e4e4e7;
+    --bg-input: #f9fafb;
+    --bg-hover: #f3f4f6;
+    --bg-active: #e8f5f3;
 
-    --border-primary: #e4e4e7;
-    --border-secondary: #d4d4d8;
-    --border-focus: #059669;
+    --border-primary: #e5e7eb;
+    --border-secondary: #d1d5db;
+    --border-focus: var(--color-primary-500);
 
-    --text-primary: #18181b;
-    --text-secondary: #52525b;
-    --text-tertiary: #a1a1aa;
+    --text-primary: #111827;
+    --text-secondary: #4b5563;
+    --text-tertiary: #9ca3af;
     --text-inverse: #ffffff;
 
-    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.04);
-    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.04);
-    --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.03);
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.04);
+    --shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.04);
+    --shadow-lg: 0 12px 28px -4px rgb(0 0 0 / 0.1), 0 4px 8px -2px rgb(0 0 0 / 0.04);
+    --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.02);
+    --shadow-glow: 0 0 20px -4px rgba(11, 196, 175, 0.15);
 }
 
 /* ============================================================
-   DARK MODE — Obsidian & Zinc
+   DARK MODE — Cinza escuro agradável
    ============================================================ */
 .dark {
-    --bg-primary: #09090b;
-    --bg-secondary: #18181b;
-    --bg-tertiary: #27272a;
-    --bg-sidebar: #09090b;
-    --bg-card: #141417;
-    --bg-input: #27272a;
-    --bg-hover: #27272a;
-    --bg-active: #3f3f46;
+    --bg-primary: #0f0f0f;
+    --bg-secondary: #0f0f0f;
+    --bg-tertiary: #171717;
+    --bg-sidebar: #141414;
+    --bg-card: #1a1a1a;
+    --bg-input: #141414;
+    --bg-hover: #222222;
+    --bg-active: #1a2e2b;
 
-    --border-primary: #27272a;
-    --border-secondary: #3f3f46;
-    --border-focus: #10b981;
+    --border-primary: #2a2a2a;
+    --border-secondary: #3a3a3a;
+    --border-focus: var(--color-primary-500);
 
-    --text-primary: #f4f4f5;
-    --text-secondary: #a1a1aa;
-    --text-tertiary: #71717a;
-    --text-inverse: #09090b;
+    --text-primary: #f0f0f0;
+    --text-secondary: #a0a0a0;
+    --text-tertiary: #666666;
+    --text-inverse: #ffffff;
 
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
     --shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.5), 0 2px 4px -2px rgb(0 0 0 / 0.3);
-    --shadow-lg: 0 12px 24px -4px rgb(0 0 0 / 0.5), 0 4px 8px -4px rgb(0 0 0 / 0.4);
-    --shadow-card: 0 1px 4px 0 rgb(0 0 0 / 0.35), 0 1px 2px -1px rgb(0 0 0 / 0.25);
+    --shadow-lg: 0 12px 28px -4px rgb(0 0 0 / 0.6), 0 4px 8px -2px rgb(0 0 0 / 0.3);
+    --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.3), 0 1px 2px -1px rgb(0 0 0 / 0.2);
+    --shadow-glow: 0 0 20px -4px rgba(11, 196, 175, 0.1);
 }
 
 /* ============================================================
@@ -104,11 +113,24 @@
     scrollbar-color: var(--border-secondary) transparent;
 }
 
+html,
+body {
+    height: 100%;
+    margin: 0;
+}
+
 body {
     background-color: var(--bg-secondary);
     color: var(--text-primary);
-    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
-    transition: background-color 0.3s ease, color 0.3s ease;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.4s ease, color 0.4s ease;
+    overflow-x: hidden;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
 }
 
 /* Transições suaves no toggle de tema */
@@ -116,17 +138,109 @@ body {
 .theme-transition *,
 .theme-transition *::before,
 .theme-transition *::after {
-    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease !important;
+    transition: background-color 0.4s ease, color 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease !important;
 }
 
-/* Focus ring com glow */
+/* ============================================================
+   FOCUS RING
+   ============================================================ */
+.focus-ring {
+    @apply outline-none transition-shadow duration-300;
+}
+
 .focus-ring:focus-visible {
-    outline: 2px solid var(--border-focus);
-    outline-offset: 2px;
-    box-shadow: 0 0 0 4px rgb(16 185 129 / 0.15);
+    outline: none;
+    box-shadow: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--border-focus);
 }
 
-/* Scrollbar customizada (Chrome/Edge) */
+/* ============================================================
+   CARD STYLES
+   ============================================================ */
+.card-hover {
+    @apply transition-all duration-300;
+}
+.card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.card-base {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    border-radius: 16px;
+    box-shadow: var(--shadow-card);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-base:hover {
+    box-shadow: var(--shadow-md), var(--shadow-glow);
+    border-color: var(--border-secondary);
+}
+
+/* ============================================================
+   INPUT STYLES
+   ============================================================ */
+.input-base {
+    @apply w-full rounded-xl border px-4 py-3 text-[15px] outline-none transition-all duration-300;
+    background-color: var(--bg-input);
+    border-color: var(--border-primary);
+    color: var(--text-primary);
+}
+
+.input-base::placeholder {
+    color: var(--text-tertiary);
+}
+
+.input-base:focus {
+    border-color: var(--color-primary-500);
+    box-shadow: 0 0 0 3px rgba(11, 196, 175, 0.12);
+}
+
+/* ============================================================
+   BUTTON STYLES
+   ============================================================ */
+.btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.25rem;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: white;
+    background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-700));
+    box-shadow: 0 2px 8px -2px rgba(6, 158, 143, 0.4);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-primary::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, transparent, rgba(255,255,255,0.1));
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px -2px rgba(6, 158, 143, 0.5);
+}
+
+.btn-primary:hover::before {
+    opacity: 1;
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+/* ============================================================
+   SCROLLBAR (Chrome/Edge)
+   ============================================================ */
 ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -143,4 +257,73 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
     background: var(--text-tertiary);
+}
+
+/* ============================================================
+   ANIMATIONS
+   ============================================================ */
+
+/* Fade in up — base */
+@keyframes fadeInUp {
+    0% {
+        opacity: 0;
+        transform: translateY(16px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-in {
+    animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Staggered delays */
+.delay-1 { animation-delay: 0.05s; }
+.delay-2 { animation-delay: 0.1s; }
+.delay-3 { animation-delay: 0.15s; }
+.delay-4 { animation-delay: 0.2s; }
+.delay-5 { animation-delay: 0.25s; }
+.delay-6 { animation-delay: 0.3s; }
+
+/* Fade in — opacity only */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.6s ease forwards;
+}
+
+/* Shimmer loading */
+@keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+.shimmer {
+    background: linear-gradient(90deg, var(--bg-hover) 25%, var(--bg-active) 50%, var(--bg-hover) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* Subtle float for decorative elements */
+@keyframes subtleFloat {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(10px, -10px) scale(1.02); }
+}
+
+/* Spin for loading states */
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Scale on hover */
+.hover-lift {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
+}
+.hover-lift:hover {
+    transform: translateY(-3px);
 }

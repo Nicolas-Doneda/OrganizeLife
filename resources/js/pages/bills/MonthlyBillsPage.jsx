@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import AppLayout from '../../components/layouts/AppLayout';
 import api from '../../services/api';
 import {
@@ -59,8 +60,8 @@ export default function MonthlyBillsPage() {
             const res = await api.get('/monthly-bills', { params: { year, month } });
             setBills(res.data.data);
             setTotals(res.data.totals);
-        } catch {
-            // fail silently
+        } catch (err) {
+            console.error('Erro:', err);
         } finally {
             setLoading(false);
         }
@@ -70,8 +71,8 @@ export default function MonthlyBillsPage() {
         try {
             await api.patch(`/monthly-bills/${bill.id}/pay`);
             fetchBills();
-        } catch {
-            // handle error
+        } catch (err) {
+            console.error('Erro:', err);
         }
     }
 
@@ -79,8 +80,8 @@ export default function MonthlyBillsPage() {
         try {
             await api.patch(`/monthly-bills/${bill.id}/cancel`);
             fetchBills();
-        } catch {
-            // handle error
+        } catch (err) {
+            console.error('Erro:', err);
         }
     }
 
@@ -89,8 +90,8 @@ export default function MonthlyBillsPage() {
         try {
             await api.delete(`/monthly-bills/${bill.id}`);
             fetchBills();
-        } catch {
-            // handle error
+        } catch (err) {
+            console.error('Erro:', err);
         }
     }
 
@@ -115,8 +116,8 @@ export default function MonthlyBillsPage() {
             setEditingBill(null);
             setForm({ name_snapshot: '', expected_amount: '', due_date: '', category_id: '', notes: '' });
             fetchBills();
-        } catch {
-            // handle error
+        } catch (err) {
+            console.error('Erro:', err);
         }
     }
 
@@ -163,10 +164,10 @@ export default function MonthlyBillsPage() {
             {/* Header */}
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+                    <h1 className="text-2xl font-bold tracking-tight" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading)' }}>
                         Contas do Mes
                     </h1>
-                    <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
+                    <p className="text-sm mt-1" style={{ color: 'var(--text-tertiary)' }}>
                         Gerencie suas contas de {MONTH_NAMES[month]} {year}
                     </p>
                 </div>
@@ -187,7 +188,7 @@ export default function MonthlyBillsPage() {
 
                     <button
                         onClick={openCreate}
-                        className="flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-700"
+                        className="btn-primary px-4 py-2.5 active:scale-95"
                     >
                         <Plus size={18} />
                         Nova Conta
@@ -197,8 +198,8 @@ export default function MonthlyBillsPage() {
 
             {/* Summary bar */}
             <div
-                className="mb-4 flex flex-wrap gap-4 rounded-xl border p-4"
-                style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-primary)' }}
+                className="mb-4 flex flex-wrap gap-4 rounded-2xl border p-4"
+                style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-primary)', boxShadow: 'var(--shadow-card)' }}
             >
                 <MiniStat label="Previsto" value={formatCurrency(totals.expected)} />
                 <MiniStat label="Pago" value={formatCurrency(totals.paid)} color="var(--color-success-600)" />
@@ -265,13 +266,13 @@ export default function MonthlyBillsPage() {
             )}
 
             {/* Modal */}
-            {showModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            {showModal && createPortal(
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
                     <div
-                        className="w-full max-w-md rounded-2xl border p-6"
-                        style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-primary)' }}
+                        className="w-full max-w-md rounded-2xl border p-6 shadow-lg"
+                        style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-primary)', boxShadow: 'var(--shadow-lg)' }}
                     >
-                        <h3 className="mb-4 text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
+                        <h3 className="mb-4 text-lg font-bold tracking-tight" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading)' }}>
                             {editingBill ? 'Editar Conta' : 'Nova Conta'}
                         </h3>
                         <form onSubmit={handleSubmit} className="space-y-4">
@@ -283,13 +284,14 @@ export default function MonthlyBillsPage() {
                                 <button type="button" onClick={() => setShowModal(false)} className="rounded-lg px-4 py-2.5 text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
                                     Cancelar
                                 </button>
-                                <button type="submit" className="rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700">
+                                <button type="submit" className="btn-primary px-4 py-2.5">
                                     {editingBill ? 'Salvar' : 'Criar'}
                                 </button>
                             </div>
                         </form>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </AppLayout>
     );
@@ -302,7 +304,7 @@ function BillCard({ bill, onPay, onCancel, onEdit, onDelete }) {
 
     return (
         <div
-            className="flex items-center gap-4 rounded-xl border px-5 py-4 transition-colors"
+            className="flex items-center gap-4 rounded-2xl border px-5 py-4 transition-all duration-300 hover:-translate-y-0.5"
             style={{
                 backgroundColor: 'var(--bg-card)',
                 borderColor: 'var(--border-primary)',

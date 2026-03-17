@@ -40,23 +40,23 @@ export default function RegisterPage() {
 
     return (
         <AuthLayout>
-            <h2 className="mb-1 text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
-                Criar conta
+            <h2 className="mb-1 text-2xl font-bold tracking-tight" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading)' }}>
+                Criar sua conta
             </h2>
-            <p className="mb-6 text-sm" style={{ color: 'var(--text-tertiary)' }}>
-                Preencha os dados abaixo para comecar
+            <p className="mb-8 text-[15px]" style={{ color: 'var(--text-tertiary)' }}>
+                Junte-se a nós e centralize sua rotina
             </p>
 
             {errors.general && (
                 <div
-                    className="mb-4 flex items-center gap-2 rounded-lg border px-4 py-3 text-sm"
+                    className="mb-5 flex items-center gap-2.5 rounded-xl border px-4 py-3 text-sm animate-in"
                     style={{
                         backgroundColor: 'var(--color-danger-50)',
                         borderColor: 'var(--color-danger-500)',
                         color: 'var(--color-danger-600)',
                     }}
                 >
-                    <AlertCircle size={16} />
+                    <AlertCircle size={16} className="shrink-0" />
                     <span>{errors.general[0]}</span>
                 </div>
             )}
@@ -64,7 +64,7 @@ export default function RegisterPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Nome */}
                 <div>
-                    <label className="mb-1.5 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                    <label className="mb-2 block text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
                         Nome
                     </label>
                     <input
@@ -73,21 +73,19 @@ export default function RegisterPage() {
                         onChange={(e) => setName(e.target.value)}
                         placeholder="Seu nome completo"
                         required
-                        className="focus-ring w-full rounded-lg border px-4 py-2.5 text-sm outline-none transition-colors"
+                        className="input-base"
                         style={{
-                            backgroundColor: 'var(--bg-input)',
-                            borderColor: getError('name') ? 'var(--color-danger-500)' : 'var(--border-primary)',
-                            color: 'var(--text-primary)',
+                            borderColor: getError('name') ? 'var(--color-danger-500)' : undefined,
                         }}
                     />
                     {getError('name') && (
-                        <p className="mt-1 text-xs" style={{ color: 'var(--color-danger-500)' }}>{getError('name')}</p>
+                        <p className="mt-1.5 text-xs font-medium" style={{ color: 'var(--color-danger-500)' }}>{getError('name')}</p>
                     )}
                 </div>
 
                 {/* Email */}
                 <div>
-                    <label className="mb-1.5 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                    <label className="mb-2 block text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
                         E-mail
                     </label>
                     <input
@@ -96,21 +94,19 @@ export default function RegisterPage() {
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="seu@email.com"
                         required
-                        className="focus-ring w-full rounded-lg border px-4 py-2.5 text-sm outline-none transition-colors"
+                        className="input-base"
                         style={{
-                            backgroundColor: 'var(--bg-input)',
-                            borderColor: getError('email') ? 'var(--color-danger-500)' : 'var(--border-primary)',
-                            color: 'var(--text-primary)',
+                            borderColor: getError('email') ? 'var(--color-danger-500)' : undefined,
                         }}
                     />
                     {getError('email') && (
-                        <p className="mt-1 text-xs" style={{ color: 'var(--color-danger-500)' }}>{getError('email')}</p>
+                        <p className="mt-1.5 text-xs font-medium" style={{ color: 'var(--color-danger-500)' }}>{getError('email')}</p>
                     )}
                 </div>
 
                 {/* Senha */}
                 <div>
-                    <label className="mb-1.5 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                    <label className="mb-2 block text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
                         Senha
                     </label>
                     <div className="relative">
@@ -118,32 +114,30 @@ export default function RegisterPage() {
                             type={showPassword ? 'text' : 'password'}
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            placeholder="Minimo 8 caracteres"
+                            placeholder="Mínimo 8 caracteres"
                             required
-                            className="focus-ring w-full rounded-lg border px-4 py-2.5 pr-10 text-sm outline-none transition-colors"
+                            className="input-base pr-10"
                             style={{
-                                backgroundColor: 'var(--bg-input)',
-                                borderColor: getError('password') ? 'var(--color-danger-500)' : 'var(--border-primary)',
-                                color: 'var(--text-primary)',
+                                borderColor: getError('password') ? 'var(--color-danger-500)' : undefined,
                             }}
                         />
                         <button
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors hover:text-[var(--text-primary)]"
                             style={{ color: 'var(--text-tertiary)' }}
                         >
                             {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                         </button>
                     </div>
                     {getError('password') && (
-                        <p className="mt-1 text-xs" style={{ color: 'var(--color-danger-500)' }}>{getError('password')}</p>
+                        <p className="mt-1.5 text-xs font-medium" style={{ color: 'var(--color-danger-500)' }}>{getError('password')}</p>
                     )}
                 </div>
 
                 {/* Confirmar senha */}
                 <div>
-                    <label className="mb-1.5 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                    <label className="mb-2 block text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
                         Confirmar senha
                     </label>
                     <input
@@ -152,12 +146,7 @@ export default function RegisterPage() {
                         onChange={(e) => setPasswordConfirmation(e.target.value)}
                         placeholder="Repita a senha"
                         required
-                        className="focus-ring w-full rounded-lg border px-4 py-2.5 text-sm outline-none transition-colors"
-                        style={{
-                            backgroundColor: 'var(--bg-input)',
-                            borderColor: 'var(--border-primary)',
-                            color: 'var(--text-primary)',
-                        }}
+                        className="input-base"
                     />
                 </div>
 
@@ -165,7 +154,7 @@ export default function RegisterPage() {
                 <button
                     type="submit"
                     disabled={loading}
-                    className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-700 disabled:opacity-50"
+                    className="btn-primary w-full py-3 text-[15px] disabled:opacity-50 disabled:cursor-not-allowed mt-2"
                 >
                     {loading ? (
                         <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
@@ -178,9 +167,9 @@ export default function RegisterPage() {
                 </button>
             </form>
 
-            <p className="mt-6 text-center text-sm" style={{ color: 'var(--text-tertiary)' }}>
-                Ja tem uma conta?{' '}
-                <Link to="/login" className="font-medium text-primary-600 hover:text-primary-500">
+            <p className="mt-8 text-center text-sm" style={{ color: 'var(--text-tertiary)' }}>
+                Já tem uma conta?{' '}
+                <Link to="/login" className="font-semibold transition-colors" style={{ color: 'var(--color-primary-600)' }}>
                     Entrar
                 </Link>
             </p>

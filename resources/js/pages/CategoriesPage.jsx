@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import AppLayout from '../components/layouts/AppLayout';
 import api from '../services/api';
 import { Plus, Tag, Trash2, Pencil } from 'lucide-react';
@@ -20,14 +21,14 @@ export default function CategoriesPage() {
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState(null);
-    const [form, setForm] = useState({ name: '', color: 'blue', icon: '' });
+    const [form, setForm] = useState({ name: '', color: 'blue', icon: '', budget_group: 'needs' });
 
     useEffect(() => { fetch(); }, []);
 
     async function fetch() {
         setLoading(true);
         try { const res = await api.get('/categories'); setCategories(res.data.data); }
-        catch { /* */ } finally { setLoading(false); }
+        catch (err) { console.error('Erro:', err); } finally { setLoading(false); }
     }
 
     async function handleSubmit(e) {
@@ -35,24 +36,24 @@ export default function CategoriesPage() {
         try {
             if (editing) { await api.put(`/categories/${editing.id}`, form); }
             else { await api.post('/categories', form); }
-            setShowModal(false); setEditing(null); setForm({ name: '', color: 'blue', icon: '' }); fetch();
-        } catch { /* */ }
+            setShowModal(false); setEditing(null); setForm({ name: '', color: 'blue', icon: '', budget_group: 'needs' }); fetch();
+        } catch (err) { console.error('Erro:', err); }
     }
 
     async function handleDelete(cat) {
         if (!confirm(`Remover a categoria "${cat.name}"?`)) return;
-        try { await api.delete(`/categories/${cat.id}`); fetch(); } catch { /* */ }
+        try { await api.delete(`/categories/${cat.id}`); fetch(); } catch (err) { console.error('Erro:', err); }
     }
 
     return (
         <AppLayout>
             <div className="mb-6 flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Categorias</h1>
-                    <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>Organize suas contas por categoria</p>
+                    <h1 className="text-2xl font-bold tracking-tight" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading)' }}>Categorias</h1>
+                    <p className="text-sm mt-1" style={{ color: 'var(--text-tertiary)' }}>Organize suas contas por categoria</p>
                 </div>
-                <button onClick={() => { setEditing(null); setForm({ name: '', color: 'blue', icon: '' }); setShowModal(true); }}
-                    className="flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700">
+                <button onClick={() => { setEditing(null); setForm({ name: '', color: 'blue', icon: '', budget_group: 'needs' }); setShowModal(true); }}
+                    className="btn-primary px-4 py-2.5 active:scale-95">
                     <Plus size={18} /> Nova Categoria
                 </button>
             </div>
@@ -69,25 +70,33 @@ export default function CategoriesPage() {
             ) : (
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {categories.map((cat) => (
-                        <div key={cat.id} className="rounded-xl border p-5" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-primary)', boxShadow: 'var(--shadow-card)' }}>
+                        <div key={cat.id} className="rounded-2xl border p-5 transition-all duration-300 hover:-translate-y-1" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-primary)', boxShadow: 'var(--shadow-card)' }}>
                             <div className="mb-3 flex items-center gap-3">
                                 <div className="flex h-10 w-10 items-center justify-center rounded-lg"
                                     style={{ backgroundColor: getColorHex(cat.color) + '20', color: getColorHex(cat.color) }}>
                                     <Tag size={20} />
                                 </div>
                                 <div>
-                                    <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{cat.name}</h3>
-                                    <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{cat.name}</h3>
+                                        <span className="rounded px-1.5 py-0.5 text-[10px] uppercase font-bold tracking-wider" style={{
+                                            backgroundColor: cat.budget_group === 'needs' ? 'var(--color-danger-50)' : cat.budget_group === 'wants' ? 'var(--color-warning-50)' : 'var(--color-success-50)',
+                                            color: cat.budget_group === 'needs' ? 'var(--color-danger-600)' : cat.budget_group === 'wants' ? 'var(--color-warning-600)' : 'var(--color-success-600)'
+                                        }}>
+                                            {cat.budget_group === 'needs' ? 'Essencial' : cat.budget_group === 'wants' ? 'Desejo' : 'Investimento'}
+                                        </span>
+                                    </div>
+                                    <p className="mt-0.5 text-xs" style={{ color: 'var(--text-tertiary)' }}>
                                         {(cat.recurring_bills_count || 0)} recorrentes · {(cat.monthly_bills_count || 0)} mensais
                                     </p>
                                 </div>
                             </div>
                             <div className="flex gap-2 border-t pt-3" style={{ borderColor: 'var(--border-primary)' }}>
-                                <button onClick={() => { setEditing(cat); setForm({ name: cat.name, color: cat.color, icon: cat.icon || '' }); setShowModal(true); }}
-                                    className="flex items-center gap-1 text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>
+                                <button onClick={() => { setEditing(cat); setForm({ name: cat.name, color: cat.color, icon: cat.icon || '', budget_group: cat.budget_group || 'needs' }); setShowModal(true); }}
+                                    className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors hover:bg-[var(--bg-hover)]" style={{ color: 'var(--text-secondary)' }}>
                                     <Pencil size={12} /> Editar
                                 </button>
-                                <button onClick={() => handleDelete(cat)} className="flex items-center gap-1 text-xs font-medium" style={{ color: 'var(--color-danger-500)' }}>
+                                <button onClick={() => handleDelete(cat)} className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors hover:bg-red-50 dark:hover:bg-red-900/10" style={{ color: 'var(--color-danger-500)' }}>
                                     <Trash2 size={12} /> Remover
                                 </button>
                             </div>
@@ -96,16 +105,60 @@ export default function CategoriesPage() {
                 </div>
             )}
 
-            {showModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                    <div className="w-full max-w-md rounded-2xl border p-6" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-primary)' }}>
-                        <h3 className="mb-4 text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{editing ? 'Editar Categoria' : 'Nova Categoria'}</h3>
+            {showModal && createPortal(
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                    <div className="w-full max-w-md rounded-2xl border p-6 shadow-lg" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-primary)', boxShadow: 'var(--shadow-lg)' }}>
+                        <h3 className="mb-4 text-lg font-bold tracking-tight" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading)' }}>{editing ? 'Editar Categoria' : 'Nova Categoria'}</h3>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
                                 <label className="mb-1.5 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Nome</label>
                                 <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required
                                     className="focus-ring w-full rounded-lg border px-4 py-2.5 text-sm outline-none"
                                     style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-primary)', color: 'var(--text-primary)' }} />
+                            </div>
+                            <div>
+                                <label className="mb-1.5 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Grupo de Orçamento</label>
+                                <div className="grid grid-cols-3 gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setForm({ ...form, budget_group: 'needs' })}
+                                        className={`rounded-lg border px-3 py-2 text-xs font-semibold tracking-wide transition-all ${form.budget_group === 'needs' ? 'ring-2 ring-danger-500' : ''}`}
+                                        style={{
+                                            backgroundColor: form.budget_group === 'needs' ? 'var(--color-danger-50)' : 'var(--bg-card)',
+                                            borderColor: form.budget_group === 'needs' ? 'var(--color-danger-200)' : 'var(--border-primary)',
+                                            color: form.budget_group === 'needs' ? 'var(--color-danger-600)' : 'var(--text-secondary)',
+                                        }}
+                                    >
+                                        ESSENCIAIS
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setForm({ ...form, budget_group: 'wants' })}
+                                        className={`rounded-lg border px-3 py-2 text-xs font-semibold tracking-wide transition-all ${form.budget_group === 'wants' ? 'ring-2 ring-warning-500' : ''}`}
+                                        style={{
+                                            backgroundColor: form.budget_group === 'wants' ? 'var(--color-warning-50)' : 'var(--bg-card)',
+                                            borderColor: form.budget_group === 'wants' ? 'var(--color-warning-200)' : 'var(--border-primary)',
+                                            color: form.budget_group === 'wants' ? 'var(--color-warning-600)' : 'var(--text-secondary)',
+                                        }}
+                                    >
+                                        DESEJOS
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setForm({ ...form, budget_group: 'savings' })}
+                                        className={`rounded-lg border px-3 py-2 text-xs font-semibold tracking-wide transition-all ${form.budget_group === 'savings' ? 'ring-2 ring-success-500' : ''}`}
+                                        style={{
+                                            backgroundColor: form.budget_group === 'savings' ? 'var(--color-success-50)' : 'var(--bg-card)',
+                                            borderColor: form.budget_group === 'savings' ? 'var(--color-success-200)' : 'var(--border-primary)',
+                                            color: form.budget_group === 'savings' ? 'var(--color-success-600)' : 'var(--text-secondary)',
+                                        }}
+                                    >
+                                        INVESTIMENTOS
+                                    </button>
+                                </div>
+                                <p className="mt-1.5 text-[11px]" style={{ color: 'var(--text-tertiary)' }}>
+                                    Isso ajuda o Dashboard a calcular até onde você gastou dentro da regra 50/30/20.
+                                </p>
                             </div>
                             <div>
                                 <label className="mb-1.5 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Cor</label>
@@ -119,11 +172,12 @@ export default function CategoriesPage() {
                             </div>
                             <div className="flex justify-end gap-3 pt-2">
                                 <button type="button" onClick={() => setShowModal(false)} className="rounded-lg px-4 py-2.5 text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Cancelar</button>
-                                <button type="submit" className="rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700">{editing ? 'Salvar' : 'Criar'}</button>
+                                <button type="submit" className="btn-primary px-4 py-2.5">{editing ? 'Salvar' : 'Criar'}</button>
                             </div>
                         </form>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </AppLayout>
     );

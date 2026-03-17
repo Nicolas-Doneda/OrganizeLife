@@ -8,6 +8,8 @@ use App\Http\Controllers\Api\RecurringBillController;
 use App\Http\Controllers\Api\MonthlyBillController;
 use App\Http\Controllers\Api\EventController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\IncomeController;
+use App\Http\Controllers\Api\WalletController;
 use Illuminate\Support\Facades\Route;
 
 //============================================================
@@ -92,12 +94,20 @@ Route::middleware(['auth:sanctum', 'ability:*'])->group(function () {
     //CONTAS MENSAIS (CRUD + ações de status)
     Route::apiResource('monthly-bills', MonthlyBillController::class);
     Route::patch('monthly-bills/{id}/pay', [MonthlyBillController::class, 'markAsPaid']);
+    Route::patch('monthly-bills/{id}/pending', [MonthlyBillController::class, 'markAsPending']);
     Route::patch('monthly-bills/{id}/overdue', [MonthlyBillController::class, 'markAsOverdue']);
     Route::patch('monthly-bills/{id}/cancel', [MonthlyBillController::class, 'cancel']);
+
+    //INCOMES (CRUD + receive)
+    Route::apiResource('incomes', IncomeController::class);
+    Route::patch('incomes/{id}/receive', [IncomeController::class, 'receive']);
 
     //EVENTOS (CRUD + upcoming)
     //IMPORTANTE: rota customizada ANTES do apiResource para nao conflitar com {id}
     Route::get('events/upcoming', [EventController::class, 'upcoming'])
         ->name('events.upcoming');
     Route::apiResource('events', EventController::class);
+
+    //CARTEIRAS (CRUD padrão)
+    Route::apiResource('wallets', WalletController::class);
 });

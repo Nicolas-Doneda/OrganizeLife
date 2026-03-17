@@ -9,7 +9,10 @@ import {
     ArrowRight,
     CheckCircle2,
     Moon,
-    Sun
+    Sun,
+    Shield,
+    Zap,
+    TrendingUp
 } from 'lucide-react';
 
 export default function LandingPage() {
@@ -19,31 +22,40 @@ export default function LandingPage() {
     return (
         <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors duration-300">
             {/* Header / Navbar */}
-            <header className="fixed top-0 w-full bg-[var(--bg-primary)]/80 backdrop-blur-md z-50 border-b border-[var(--border-primary)] transition-colors duration-300">
+            <header className="fixed top-0 w-full bg-[var(--bg-primary)]/80 backdrop-blur-xl z-50 border-b border-[var(--border-primary)] transition-colors duration-300">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-[var(--color-primary-600)] flex items-center justify-center text-white font-bold text-xl shadow-md">
-                            O
+                    <div className="flex items-center gap-2.5">
+                        <div
+                            className="flex h-9 w-9 items-center justify-center rounded-xl shadow-md"
+                            style={{
+                                background: 'linear-gradient(135deg, var(--color-primary-600), var(--color-primary-700))',
+                                boxShadow: '0 4px 12px -2px rgba(6, 158, 143, 0.3)',
+                            }}
+                        >
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                                <path d="M2 17l10 5 10-5" />
+                                <path d="M2 12l10 5 10-5" />
+                            </svg>
                         </div>
-                        <span className="font-bold text-xl tracking-tight">OrganizeLife</span>
+                        <span className="font-bold text-xl tracking-tight" style={{ fontFamily: 'var(--font-heading)' }}>OrganizeLife</span>
                     </div>
 
                     <nav className="flex items-center gap-4">
-                        {/* Theme Toggle Button */}
                         <button
                             onClick={toggleTheme}
-                            className="p-2 rounded-lg text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors focus-ring"
+                            className="p-2 rounded-xl text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-all hover:scale-110 active:scale-95 focus-ring"
                             aria-label="Toggle theme"
                         >
                             {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
                         </button>
 
                         {loading ? (
-                            <div className="w-20 h-8 bg-[var(--bg-tertiary)] animate-pulse rounded-md"></div>
+                            <div className="w-20 h-8 bg-[var(--bg-tertiary)] shimmer rounded-lg"></div>
                         ) : isAuthenticated ? (
                             <Link
                                 to="/dashboard"
-                                className="inline-flex items-center justify-center rounded-lg bg-[var(--color-primary-600)] px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-[var(--color-primary-700)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] focus:ring-offset-2 transition-all"
+                                className="btn-primary"
                             >
                                 Acesse seu painel
                             </Link>
@@ -51,13 +63,13 @@ export default function LandingPage() {
                             <>
                                 <Link
                                     to="/login"
-                                    className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                                    className="text-sm font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
                                 >
                                     Login
                                 </Link>
                                 <Link
                                     to="/register"
-                                    className="inline-flex items-center justify-center rounded-lg bg-[var(--color-primary-600)] px-4 py-2 text-sm font-medium text-white shadow-md hover:bg-[var(--color-primary-700)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] focus:ring-offset-2 transition-all hover:scale-105"
+                                    className="btn-primary"
                                 >
                                     Começar Grátis
                                 </Link>
@@ -69,35 +81,68 @@ export default function LandingPage() {
 
             <main>
                 {/* Hero Section */}
-                <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden flex flex-col items-center justify-center">
-                    {/* Background decorations matched to pine/emerald */}
-                    <div className="absolute top-0 right-0 -translate-y-12 translate-x-1/3 w-[800px] h-[800px] bg-[var(--color-primary-100)] dark:bg-[var(--color-primary-900)] rounded-full blur-[120px] -z-10 opacity-30"></div>
-                    <div className="absolute top-32 left-0 -translate-x-1/3 w-[600px] h-[600px] bg-[var(--color-primary-200)] dark:bg-[var(--color-primary-800)] rounded-full blur-[120px] -z-10 opacity-20"></div>
+                <section className="relative pt-32 pb-20 lg:pt-44 lg:pb-32 overflow-hidden flex flex-col items-center justify-center">
+                    {/* Background decorations */}
+                    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                        <div
+                            className="absolute top-20 left-1/4 w-[600px] h-[600px] rounded-full opacity-[0.06] dark:opacity-[0.04]"
+                            style={{ background: 'radial-gradient(circle, var(--color-primary-400), transparent 70%)' }}
+                        />
+                        <div
+                            className="absolute bottom-0 right-1/4 w-[400px] h-[400px] rounded-full opacity-[0.05] dark:opacity-[0.03]"
+                            style={{ background: 'radial-gradient(circle, var(--color-warning-400), transparent 70%)' }}
+                        />
+                        <div
+                            className="absolute inset-0 opacity-[0.025] dark:opacity-[0.015]"
+                            style={{
+                                backgroundImage: `radial-gradient(circle at 1px 1px, var(--text-tertiary) 1px, transparent 0)`,
+                                backgroundSize: '40px 40px',
+                            }}
+                        />
+                    </div>
 
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-balance z-10">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--bg-secondary)] border border-[var(--border-primary)] text-sm font-medium text-[var(--color-primary-600)] mb-8">
+                        {/* Badge */}
+                        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[var(--bg-card)] border border-[var(--border-primary)] text-sm font-semibold mb-8 animate-in shadow-sm"
+                            style={{ color: 'var(--color-primary-600)' }}
+                        >
                             <span className="relative flex h-2 w-2">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--color-primary-400)] opacity-75"></span>
-                              <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--color-primary-500)]"></span>
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: 'var(--color-primary-400)' }}></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2" style={{ backgroundColor: 'var(--color-primary-500)' }}></span>
                             </span>
-                            Simplifique sua vida
+                            Release 1.0 — Conheça o ecossistema
                         </div>
 
-                        <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-8">
-                            Domine o seu
-                            <span className="text-[var(--color-primary-600)]"> tempo </span>
-                            e o seu
-                            <span className="text-[var(--color-primary-500)]"> dinheiro </span>
+                        {/* Heading */}
+                        <h1
+                            className="text-5xl md:text-7xl font-extrabold tracking-tight mb-8 animate-in delay-1"
+                            style={{ fontFamily: 'var(--font-heading)', opacity: 0 }}
+                        >
+                            Uma nova forma de
+                            <span style={{ color: 'var(--color-primary-500)' }}> organizar </span>
+                            <br className="hidden sm:block" />
+                            o que
+                            <span style={{ color: 'var(--color-primary-600)' }}> importa</span>
                         </h1>
-                        <p className="mt-4 text-xl text-[var(--text-secondary)] max-w-3xl mx-auto mb-10 leading-relaxed">
-                            OrganizeLife reúne gestão financeira, calendário inteligente e organização pessoal em um único aplicativo bonito e fácil de usar. Esqueça as dezenas de planilhas.
+
+                        {/* Subtitle */}
+                        <p
+                            className="text-lg md:text-xl max-w-3xl mx-auto mb-10 leading-relaxed font-medium animate-in delay-2"
+                            style={{ color: 'var(--text-secondary)', opacity: 0 }}
+                        >
+                            O OrganizeLife é um sistema centralizado para organizar suas tarefas, contas e eventos. Abandone a fricção das rotinas complexas e ganhe clareza do seu dia a dia.
                         </p>
-                        
-                        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+
+                        {/* CTA Buttons */}
+                        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-in delay-3" style={{ opacity: 0 }}>
                             {!isAuthenticated && (
                                 <Link
                                     to="/register"
-                                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--color-primary-600)] px-8 py-4 text-base font-semibold text-white shadow-lg hover:bg-[var(--color-primary-700)] transition-all hover:-translate-y-1"
+                                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl px-8 py-4 text-base font-bold text-white shadow-lg transition-all hover:-translate-y-1"
+                                    style={{
+                                        background: 'linear-gradient(135deg, var(--color-primary-600), var(--color-primary-700))',
+                                        boxShadow: '0 8px 24px -4px rgba(6, 158, 143, 0.35)',
+                                    }}
                                 >
                                     Criar conta gratuita
                                     <ArrowRight className="w-5 h-5" />
@@ -105,27 +150,27 @@ export default function LandingPage() {
                             )}
                             <a
                                 href="#features"
-                                className="w-full sm:w-auto inline-flex items-center justify-center rounded-xl bg-[var(--bg-card)] px-8 py-4 text-base font-semibold text-[var(--text-primary)] shadow-sm ring-1 ring-inset ring-[var(--border-primary)] hover:bg-[var(--bg-hover)] transition-all"
+                                className="w-full sm:w-auto inline-flex items-center justify-center rounded-xl bg-[var(--bg-card)] px-8 py-4 text-base font-semibold text-[var(--text-primary)] shadow-sm ring-1 ring-inset ring-[var(--border-primary)] hover:bg-[var(--bg-hover)] transition-all hover:-translate-y-0.5"
                             >
                                 Conhecer recursos
                             </a>
                         </div>
-                        
-                        <div className="mt-14 flex flex-wrap items-center justify-center gap-8 text-sm text-[var(--text-secondary)] font-medium">
+
+                        {/* Trust signals */}
+                        <div className="mt-16 flex flex-wrap items-center justify-center gap-8 text-sm font-medium animate-in delay-4" style={{ color: 'var(--text-secondary)', opacity: 0 }}>
                             <div className="flex items-center gap-2">
-                                <CheckCircle2 className="w-5 h-5 text-[var(--color-primary-500)]" />
-                                <span>100% Gratuito</span>
+                                <CheckCircle2 className="w-5 h-5" style={{ color: 'var(--color-primary-500)' }} />
+                                <span>Foco em Produtividade</span>
                             </div>
                             <div className="flex items-center gap-2">
-                                <CheckCircle2 className="w-5 h-5 text-[var(--color-primary-500)]" />
-                                <span>Seguro & Privado</span>
+                                <CheckCircle2 className="w-5 h-5" style={{ color: 'var(--color-primary-500)' }} />
+                                <span>Interface Minimalista</span>
                             </div>
                             <div className="flex items-center gap-2">
-                                <CheckCircle2 className="w-5 h-5 text-[var(--color-primary-500)]" />
-                                <span>Sem propagandas</span>
+                                <CheckCircle2 className="w-5 h-5" style={{ color: 'var(--color-primary-500)' }} />
+                                <span>Controle Total dos Dados</span>
                             </div>
                         </div>
-
                     </div>
                 </section>
 
@@ -133,44 +178,58 @@ export default function LandingPage() {
                 <section id="features" className="py-24 bg-[var(--bg-secondary)] border-y border-[var(--border-primary)] transition-colors duration-300">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                         <div className="text-center max-w-2xl mx-auto mb-16">
-                            <h2 className="text-[var(--color-primary-600)] font-bold tracking-wide uppercase text-sm mb-3">Tudo em um só lugar</h2>
-                            <p className="text-3xl font-bold sm:text-4xl tracking-tight">O fim do caos na sua rotina</p>
-                            <p className="mt-4 text-lg text-[var(--text-secondary)]">Projetado com paixão para te dar controle total sobre o que realmente importa na sua vida.</p>
+                            <p className="text-sm font-bold tracking-widest uppercase mb-3" style={{ color: 'var(--color-primary-600)' }}>
+                                Tudo em um só lugar
+                            </p>
+                            <h2 className="text-3xl font-bold sm:text-4xl tracking-tight mb-4" style={{ fontFamily: 'var(--font-heading)' }}>
+                                A arquitetura da sua rotina
+                            </h2>
+                            <p className="text-lg" style={{ color: 'var(--text-secondary)' }}>
+                                Projetado com rigor técnico para modelar sua rotina de forma fluida.
+                            </p>
                         </div>
 
-                        <div className="grid md:grid-cols-3 gap-8">
-                            {/* Feature 1 */}
-                            <div className="bg-[var(--bg-card)] rounded-3xl p-8 shadow-[var(--shadow-card)] ring-1 ring-[var(--border-primary)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1 transition-all duration-300">
-                                <div className="w-14 h-14 rounded-2xl bg-[var(--color-primary-50)] dark:bg-[var(--color-primary-900)] text-[var(--color-primary-600)] flex items-center justify-center mb-6">
-                                    <PiggyBank className="w-7 h-7" />
-                                </div>
-                                <h3 className="text-xl font-bold mb-3">Gastos sob controle</h3>
-                                <p className="text-[var(--text-secondary)] leading-relaxed">
-                                    Adicione suas contas fixas, saiba exatamente para onde seu dinheiro vai todo mês e evite surpresas na fatura. O fim do sofrimento nas finanças.
-                                </p>
-                            </div>
+                        <div className="grid md:grid-cols-3 gap-6">
+                            <FeatureCard
+                                icon={PiggyBank}
+                                title="Gastos sob controle"
+                                description="Adicione suas contas fixas, saiba exatamente para onde seu dinheiro vai todo mês e evite surpresas na fatura."
+                                delay="1"
+                            />
+                            <FeatureCard
+                                icon={CalendarDays}
+                                title="Agenda Inteligente"
+                                description="Uma visão completa das suas tarefas, compromissos e datas de vencimento. Prazos nunca mais serão esquecidos."
+                                delay="2"
+                            />
+                            <FeatureCard
+                                icon={LayoutDashboard}
+                                title="Visão Completa"
+                                description="Um dashboard impecável e minimalista. Em poucos segundos de manhã, você sabe tudo o que precisa ser feito."
+                                delay="3"
+                            />
+                        </div>
 
-                            {/* Feature 2 */}
-                            <div className="bg-[var(--bg-card)] rounded-3xl p-8 shadow-[var(--shadow-card)] ring-1 ring-[var(--border-primary)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1 transition-all duration-300">
-                                <div className="w-14 h-14 rounded-2xl bg-[var(--color-primary-50)] dark:bg-[var(--color-primary-900)] text-[var(--color-primary-600)] flex items-center justify-center mb-6">
-                                    <CalendarDays className="w-7 h-7" />
-                                </div>
-                                <h3 className="text-xl font-bold mb-3">Agenda Inteligente</h3>
-                                <p className="text-[var(--text-secondary)] leading-relaxed">
-                                    Uma visão completa das suas tarefas, compromissos e datas de vencimento. Prazos não passarão mais batido na sua rotina corrida.
-                                </p>
-                            </div>
-
-                            {/* Feature 3 */}
-                            <div className="bg-[var(--bg-card)] rounded-3xl p-8 shadow-[var(--shadow-card)] ring-1 ring-[var(--border-primary)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1 transition-all duration-300">
-                                <div className="w-14 h-14 rounded-2xl bg-[var(--color-primary-50)] dark:bg-[var(--color-primary-900)] text-[var(--color-primary-600)] flex items-center justify-center mb-6">
-                                    <LayoutDashboard className="w-7 h-7" />
-                                </div>
-                                <h3 className="text-xl font-bold mb-3">Visão Completa</h3>
-                                <p className="text-[var(--text-secondary)] leading-relaxed">
-                                    Um dashboard impecável e minimalista. Em poucos segundos de manhã, você sabe tudo o que precisa ser feito e pago naquele dia.
-                                </p>
-                            </div>
+                        {/* Secondary features */}
+                        <div className="grid md:grid-cols-3 gap-6 mt-6">
+                            <FeatureCard
+                                icon={Shield}
+                                title="Seguro & Privado"
+                                description="Seus dados criptografados e protegidos. Autenticação de dois fatores e controle de sessão disponíveis."
+                                delay="4"
+                            />
+                            <FeatureCard
+                                icon={Zap}
+                                title="Rápido & Leve"
+                                description="Interface construída para ser instantânea. Sem carregamentos desnecessários, sem travamentos."
+                                delay="5"
+                            />
+                            <FeatureCard
+                                icon={TrendingUp}
+                                title="Orçamento Inteligente"
+                                description="Regras de orçamento flexíveis (50/30/20, 60/30/10) que se adaptam às suas metas financeiras."
+                                delay="6"
+                            />
                         </div>
                     </div>
                 </section>
@@ -178,19 +237,33 @@ export default function LandingPage() {
                 {/* Call to Action */}
                 <section className="py-24 bg-[var(--bg-primary)] transition-colors duration-300">
                     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="bg-[var(--color-primary-800)] rounded-[2.5rem] p-10 md:p-16 text-center shadow-[var(--shadow-lg)] overflow-hidden relative">
-                             {/* Decorative circles */}
-                            <div className="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 rounded-full bg-white/5 blur-3xl mix-blend-overlay"></div>
-                            <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 rounded-full bg-black/20 blur-3xl mix-blend-overlay"></div>
-                            
-                            <h2 className="text-3xl md:text-4xl font-bold text-white mb-6 relative z-10">Pronto para assumir as rédeas?</h2>
-                            <p className="text-[var(--color-primary-100)] text-lg md:text-xl max-w-2xl mx-auto mb-10 relative z-10 font-medium">
-                                Junte-se a nós hoje. Leva menos de 2 minutos para se cadastrar e começar a organizar uma vida fantástica.
+                        <div
+                            className="rounded-3xl p-10 md:p-16 text-center shadow-lg overflow-hidden relative"
+                            style={{
+                                background: 'linear-gradient(135deg, var(--color-primary-800), var(--color-primary-900))',
+                            }}
+                        >
+                            {/* Decorative circles */}
+                            <div
+                                className="absolute top-0 right-0 -mr-20 -mt-20 w-72 h-72 rounded-full opacity-10"
+                                style={{ background: 'radial-gradient(circle, var(--color-primary-300), transparent 70%)' }}
+                            />
+                            <div
+                                className="absolute bottom-0 left-0 -ml-16 -mb-16 w-56 h-56 rounded-full opacity-10"
+                                style={{ background: 'radial-gradient(circle, var(--color-warning-400), transparent 70%)' }}
+                            />
+
+                            <h2 className="text-3xl md:text-4xl font-bold text-white mb-6 relative z-10" style={{ fontFamily: 'var(--font-heading)' }}>
+                                Conheça o ecossistema
+                            </h2>
+                            <p className="text-lg md:text-xl max-w-2xl mx-auto mb-10 relative z-10 font-medium" style={{ color: 'var(--color-primary-200)' }}>
+                                Um espaço digital desenvolvido para manter o equilíbrio de suas finanças e calendário. Menos distrações, mais clareza.
                             </p>
                             {!isAuthenticated && (
                                 <Link
                                     to="/register"
-                                    className="relative z-10 inline-flex items-center justify-center rounded-xl bg-white px-8 py-4 text-lg font-bold text-[var(--color-primary-800)] shadow-xl hover:bg-[var(--bg-secondary)] transition-all hover:scale-105"
+                                    className="relative z-10 inline-flex items-center justify-center rounded-xl bg-white px-8 py-4 text-lg font-bold shadow-xl hover:scale-105 transition-all"
+                                    style={{ color: 'var(--color-primary-800)' }}
                                 >
                                     Criar conta gratuitamente
                                 </Link>
@@ -205,17 +278,62 @@ export default function LandingPage() {
             <footer className="bg-[var(--bg-secondary)] py-12 border-t border-[var(--border-primary)] transition-colors duration-300">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col items-center">
                     <div className="flex items-center gap-2 mb-6 opacity-80">
-                        <div className="w-6 h-6 rounded bg-[var(--text-primary)] flex items-center justify-center text-[var(--bg-primary)] font-bold text-xs">O</div>
-                        <span className="font-semibold text-[var(--text-primary)]">OrganizeLife</span>
+                        <div
+                            className="flex h-7 w-7 items-center justify-center rounded-lg"
+                            style={{ background: 'linear-gradient(135deg, var(--color-primary-600), var(--color-primary-700))' }}
+                        >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                                <path d="M2 17l10 5 10-5" />
+                                <path d="M2 12l10 5 10-5" />
+                            </svg>
+                        </div>
+                        <span className="font-bold" style={{ fontFamily: 'var(--font-heading)' }}>OrganizeLife</span>
                     </div>
-                    <p className="text-[var(--text-secondary)] text-sm">
+                    <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                         Desenvolvido com carinho para simplificar dias complexos.
                     </p>
-                    <p className="text-[var(--text-tertiary)] text-xs mt-4">
+                    <p className="text-xs mt-4" style={{ color: 'var(--text-tertiary)' }}>
                         &copy; {new Date().getFullYear()} OrganizeLife. Todos os direitos reservados.
                     </p>
                 </div>
             </footer>
+        </div>
+    );
+}
+
+/* Feature Card Component */
+function FeatureCard({ icon: Icon, title, description, delay }) {
+    return (
+        <div
+            className={`rounded-2xl p-7 transition-all duration-300 hover:-translate-y-1 group`}
+            style={{
+                backgroundColor: 'var(--bg-card)',
+                border: '1px solid var(--border-primary)',
+                boxShadow: 'var(--shadow-card)',
+            }}
+            onMouseEnter={(e) => {
+                e.currentTarget.style.boxShadow = 'var(--shadow-md), var(--shadow-glow)';
+                e.currentTarget.style.borderColor = 'var(--color-primary-500)';
+            }}
+            onMouseLeave={(e) => {
+                e.currentTarget.style.boxShadow = 'var(--shadow-card)';
+                e.currentTarget.style.borderColor = 'var(--border-primary)';
+            }}
+        >
+            <div
+                className="w-12 h-12 rounded-xl flex items-center justify-center mb-5 transition-transform duration-300 group-hover:scale-110"
+                style={{
+                    background: 'linear-gradient(135deg, var(--color-primary-600), var(--color-primary-700))',
+                    boxShadow: '0 4px 12px -2px rgba(6, 158, 143, 0.25)',
+                }}
+            >
+                <Icon className="w-6 h-6 text-white" />
+            </div>
+            <h3 className="text-lg font-bold mb-2" style={{ fontFamily: 'var(--font-heading)' }}>{title}</h3>
+            <p className="text-[15px] leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                {description}
+            </p>
         </div>
     );
 }

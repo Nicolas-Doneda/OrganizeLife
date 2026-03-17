@@ -20,7 +20,15 @@ export function AuthProvider({ children }) {
     async function fetchUser() {
         try {
             const response = await api.get('/auth/me');
-            setUser(response.data.data.user);
+            const { user, avatar_url, has_2fa, budget_needs_percent, budget_wants_percent, budget_savings_percent } = response.data.data;
+            setUser({
+                ...user,
+                avatar_url,
+                two_factor_enabled: has_2fa,
+                budget_needs_percent,
+                budget_wants_percent,
+                budget_savings_percent
+            });
         } catch {
             localStorage.removeItem('auth_token');
             setUser(null);
@@ -64,6 +72,18 @@ export function AuthProvider({ children }) {
         setUser(null);
     }
 
+    async function verify2fa(code) {
+        const response = await api.post('/auth/2fa/verify', { code });
+        localStorage.setItem('auth_token', response.data.data.token);
+        setUser(response.data.data.user);
+    }
+
+    async function recovery2fa(recovery_code) {
+        const response = await api.post('/auth/2fa/recovery', { recovery_code });
+        localStorage.setItem('auth_token', response.data.data.token);
+        setUser(response.data.data.user);
+    }
+
     const value = {
         user,
         loading,
@@ -71,6 +91,8 @@ export function AuthProvider({ children }) {
         register,
         logout,
         fetchUser,
+        verify2fa,
+        recovery2fa,
         isAuthenticated: !!user,
     };
 

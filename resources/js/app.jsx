@@ -11,10 +11,13 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
+import TwoFactorVerifyPage from './pages/auth/TwoFactorVerifyPage';
 import DashboardPage from './pages/DashboardPage';
+import IncomesPage from './pages/IncomesPage';
 import BillsPage from './pages/BillsPage';
 import CalendarPage from './pages/CalendarPage';
 import CategoriesPage from './pages/CategoriesPage';
+import WalletsPage from './pages/WalletsPage';
 import ProfilePage from './pages/ProfilePage';
 
 // Error Boundary para capturar erros silenciosos de render
@@ -73,6 +76,20 @@ function GuestRoute({ children }) {
     return isAuthenticated ? <Navigate to="/dashboard" replace /> : children;
 }
 
+function HomeRoute() {
+    const { isAuthenticated, loading } = useAuth();
+
+    if (loading) {
+        return (
+            <div style={{ display: 'flex', minHeight: '100vh', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--bg-secondary)' }}>
+                <div style={{ width: 40, height: 40, border: '3px solid var(--border-secondary)', borderTopColor: 'var(--color-primary-600)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+            </div>
+        );
+    }
+
+    return isAuthenticated ? <Navigate to="/dashboard" replace /> : <LandingPage />;
+}
+
 function App() {
     return (
         <ErrorBoundary>
@@ -80,18 +97,21 @@ function App() {
                 <ThemeProvider>
                     <AuthProvider>
                         <Routes>
-                            {/* Public Landing Page */}
-                            <Route path="/" element={<LandingPage />} />
+                            {/* Public Landing — redirects to /dashboard if logged in */}
+                            <Route path="/" element={<HomeRoute />} />
 
                             {/* Guest Only Routes */}
                             <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
                             <Route path="/register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
+                            <Route path="/2fa-verify" element={<GuestRoute><TwoFactorVerifyPage /></GuestRoute>} />
 
                             {/* Protected Routes */}
                             <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+                            <Route path="/incomes" element={<ProtectedRoute><IncomesPage /></ProtectedRoute>} />
                             <Route path="/bills" element={<ProtectedRoute><BillsPage /></ProtectedRoute>} />
                             <Route path="/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
                             <Route path="/categories" element={<ProtectedRoute><CategoriesPage /></ProtectedRoute>} />
+                            <Route path="/wallets" element={<ProtectedRoute><WalletsPage /></ProtectedRoute>} />
                             <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
 
                             {/* Redirect old specific routes to newer ones */}
