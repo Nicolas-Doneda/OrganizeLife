@@ -1,59 +1,145 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+<h1 align="center">
+  <br>
+  📋 OrganizeLife
+  <br>
+</h1>
 
 <p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
+  <strong>Sua vida financeira e sua agenda, organizadas em um só lugar.</strong>
 </p>
 
-## About Laravel
+<p align="center">
+  <img src="https://img.shields.io/badge/Laravel-12-FF2D20?style=for-the-badge&logo=laravel&logoColor=white" alt="Laravel" />
+  <img src="https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React" />
+  <img src="https://img.shields.io/badge/Vite-7-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite" />
+  <img src="https://img.shields.io/badge/TailwindCSS-4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white" alt="Tailwind CSS" />
+  <img src="https://img.shields.io/badge/license-MIT-green?style=for-the-badge" alt="License" />
+</p>
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+---
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## 📖 Sobre o Projeto
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+**OrganizeLife** é uma aplicação web de gerenciamento pessoal focada em finanças e eventos. Com ela, você centraliza o controle das suas entradas, gastos, contas a pagar e compromissos em uma interface limpa e intuitiva, com suporte a tema claro e escuro.
 
-## Learning Laravel
+O projeto foi construído com uma arquitetura **SPA (Single Page Application)**: o backend em **Laravel** expõe uma API RESTful, e o frontend em **React** consome essa API para oferecer uma experiência fluida sem recarregamentos de página.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+---
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## ✨ Funcionalidades
 
-## Laravel Sponsors
+| Módulo | O que você pode fazer |
+|---|---|
+| 🏠 **Dashboard** | Visão geral das finanças: saldo, receitas, despesas e gráficos |
+| 💰 **Receitas** | Cadastre entradas de dinheiro e marque-as como recebidas |
+| 📄 **Contas** | Gerencie contas mensais e contas recorrentes com controle de status |
+| 📅 **Calendário** | Visualize eventos, contas e receitas em uma agenda mensal |
+| 🏷️ **Categorias** | Crie categorias personalizadas para organizar suas despesas |
+| 👛 **Carteiras** | Organize seu dinheiro em carteiras separadas com limite simbólico |
+| 👤 **Perfil** | Gerencie seus dados, senha e autenticação de dois fatores (2FA) |
+| 🌗 **Tema** | Alterne entre visual claro e escuro com um clique |
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+---
 
-### Premium Partners
+## 🛠️ Stack Tecnológica
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+### Backend
+- **[Laravel 12](https://laravel.com/)** — Framework PHP para a API RESTful e autenticação
+- **MySQL / SQLite** — Banco de dados relacional
+- **Laravel Sanctum** — Autenticação stateful via cookies para SPAs
+- **2FA por TOTP** — Autenticação de dois fatores compatível com Google Authenticator
 
-## Contributing
+### Frontend
+- **[React 19](https://react.dev/)** — Interface reativa baseada em componentes
+- **[React Router DOM 7](https://reactrouter.com/)** — Navegação client-side
+- **[Recharts](https://recharts.org/)** — Gráficos e visualizações financeiras
+- **[Lucide React](https://lucide.dev/)** — Ícones modernos e consistentes
+- **[TailwindCSS 4](https://tailwindcss.com/)** — Estilização utilitária
+- **[Vite 7](https://vite.dev/)** — Bundler ultrarrápido com HMR
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+---
 
-## Code of Conduct
+## 🚀 Como Rodar Localmente
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### Pré-requisitos
+- PHP >= 8.2
+- Composer
+- Node.js >= 18
+- MySQL ou SQLite
 
-## Security Vulnerabilities
+### 1. Clone o repositório
+```bash
+git clone https://github.com/Nicolas-Doneda/OrganizeLife.git
+cd OrganizeLife
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### 2. Instale as dependências
+```bash
+composer install
+npm install
+```
 
-## License
+### 3. Configure o ambiente
+```bash
+cp .env.example .env
+php artisan key:generate
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Edite o arquivo `.env` com suas credenciais de banco de dados.
+
+### 4. Execute as migrations
+```bash
+php artisan migrate
+```
+
+### 5. Inicie os servidores de desenvolvimento
+
+Em dois terminais separados:
+```bash
+# Terminal 1 - Backend Laravel
+php artisan serve
+
+# Terminal 2 - Frontend Vite
+npm run dev
+```
+
+Acesse a aplicação em **http://localhost:8000**.
+
+---
+
+## 🗂️ Estrutura do Projeto
+
+```
+OrganizeLife/
+├── app/
+│   ├── Http/
+│   │   ├── Controllers/Api/   # Controllers da API REST
+│   │   └── Requests/          # Form Requests com validação
+│   └── Models/                # Modelos Eloquent
+│       ├── User.php
+│       ├── Income.php
+│       ├── MonthlyBill.php
+│       ├── RecurringBill.php
+│       ├── Wallet.php
+│       ├── Category.php
+│       └── Event.php
+├── resources/
+│   └── js/
+│       ├── app.jsx            # Ponto de entrada React + rotas
+│       ├── pages/             # Páginas da aplicação
+│       ├── components/        # Componentes reutilizáveis
+│       ├── contexts/          # Context API (Auth, Theme)
+│       └── services/          # Chamadas à API
+├── routes/
+│   └── api.php                # Rotas da API
+└── database/
+    └── migrations/            # Migrations do banco de dados
+```
+
+---
+
+## 🔐 Autenticação
+
+A autenticação é gerenciada pelo **Laravel Sanctum** com sessões stateful, o que garante segurança sem a necessidade de armazenar tokens no `localStorage`. O sistema também suporta **autenticação de dois fatores (2FA)** via aplicativos como Google Authenticator ou Authy.
+
+
