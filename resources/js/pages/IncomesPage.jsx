@@ -266,8 +266,8 @@ export default function IncomesPage() {
                         return (
                             <div key={income.id} className="group flex items-center gap-4 rounded-2xl border px-5 py-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md bg-[var(--bg-card)]" style={{ borderColor: 'var(--border-primary)' }}>
                                 {income.status === 'pending' ? (
-                                    <button onClick={() => handleReceive(income)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-300 hover:scale-110 hover:border-success-500 hover:bg-success-50" style={{ borderColor: 'var(--border-secondary)' }} title="Marcar como recebido">
-                                        <Check size={14} className="opacity-0 transition-opacity group-hover:opacity-100" style={{ color: 'var(--color-success-600)' }} />
+                                    <button onClick={() => handleReceive(income)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-300 hover:scale-110 hover:border-[var(--color-success-500)] hover:bg-[var(--color-success-50)]" style={{ borderColor: 'var(--border-secondary)' }} title="Marcar como recebido">
+                                        <Check size={14} className="text-[var(--color-success-600)] opacity-40 transition-opacity hover:opacity-100" />
                                     </button>
                                 ) : (
                                     <div className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full transition-all duration-300 hover:opacity-80 hover:scale-105" style={{ backgroundColor: status.bg, color: status.color }} onClick={() => handleUndoReceive(income)} title="Desfazer recebimento">
@@ -341,7 +341,12 @@ export default function IncomesPage() {
                                 </div>
                                 <div>
                                     <label className="mb-1.5 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Data prevista na conta</label>
-                                    <input type="date" value={form.expected_date} onChange={(e) => setForm({ ...form, expected_date: e.target.value })} required
+                                    <input type="date" value={form.expected_date} onChange={(e) => {
+                                        const selectedDate = e.target.value;
+                                        const today = new Date().toISOString().substring(0, 10);
+                                        const isPastOrToday = selectedDate <= today;
+                                        setForm({ ...form, expected_date: selectedDate, status: isPastOrToday ? 'received' : 'pending' });
+                                    }} required
                                         className="focus-ring w-full rounded-lg border px-4 py-2.5 text-sm outline-none"
                                         style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-primary)', color: 'var(--text-primary)' }} />
                                 </div>
@@ -369,10 +374,10 @@ export default function IncomesPage() {
                                 </select>
                             </div>
 
-                            <div className="flex items-center gap-2 mt-2">
-                                <input id="status-checkbox" type="checkbox" checked={form.status === 'received'} onChange={(e) => setForm({ ...form, status: e.target.checked ? 'received' : 'pending' })} className="w-4 h-4 rounded text-primary-600 focus:ring-primary-500" />
-                                <label htmlFor="status-checkbox" className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                                    O dinheiro já está na minha conta
+                            <div className="flex items-center gap-2 mt-2 cursor-pointer" onClick={() => setForm({ ...form, status: form.status === 'received' ? 'pending' : 'received' })}>
+                                <input id="status-checkbox" type="checkbox" checked={form.status === 'received'} readOnly className="w-4 h-4 rounded text-primary-600 focus:ring-primary-500 cursor-pointer" />
+                                <label htmlFor="status-checkbox" className="text-sm font-medium cursor-pointer" style={{ color: form.status === 'received' ? 'var(--color-success-600)' : 'var(--text-primary)' }}>
+                                    {form.status === 'received' ? '✓ Dinheiro já recebido!' : 'O dinheiro já está na minha conta'}
                                 </label>
                             </div>
 
