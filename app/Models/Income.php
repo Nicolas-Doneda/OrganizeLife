@@ -8,24 +8,24 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Income extends Model
 {
     use SoftDeletes;
+
     protected $fillable = [
         'name',
         'amount',
         'type',
         'expected_date',
-        'date',
-        'is_paid',
+        'status',
         'wallet_id',
     ];
 
     protected $casts = [
-        'amount' => 'decimal:2',
+        'amount'        => 'decimal:2',
         'expected_date' => 'date',
     ];
 
     public function scopePending($query)
     {
-        return $query->where('is_paid', false);
+        return $query->where('status', 'pending');
     }
 
     public function user()
