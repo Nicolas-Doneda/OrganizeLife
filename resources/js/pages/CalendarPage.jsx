@@ -263,14 +263,14 @@ export default function CalendarPage() {
         setEventForm({
             title: event.title,
             description: event.description || '',
-            start_date: event.start_date,
-            end_date: event.end_date || '',
+            start_date: normalizeDate(event.start_date),
+            end_date: event.end_date ? normalizeDate(event.end_date) : '',
             all_day: event.all_day,
             priority: event.priority,
             recurrence_type: event.recurrence_type || 'none',
             recurrence_interval: event.recurrence_interval || '',
             recurrence_days: event.recurrence_days || [],
-            recurrence_end: event.recurrence_end || '',
+            recurrence_end: event.recurrence_end ? normalizeDate(event.recurrence_end) : '',
         });
         setShowEventModal(true);
     }
@@ -305,7 +305,13 @@ export default function CalendarPage() {
             ? 'Este é um evento recorrente. Deseja remover TODAS as ocorrências dele?'
             : 'Remover este evento?';
         if (!confirm(msg)) return;
-        try { await api.delete(`/events/${event.id}`); fetchData(); } catch (err) { console.error('Erro:', err); }
+        try { 
+            await api.delete(`/events/${event.id}`); 
+            fetchData(); 
+        } catch (err) { 
+            console.error('Erro:', err); 
+            alert('Erro ao tentar deletar: ' + (err?.response?.data?.message || err.message));
+        }
     }
 
     async function handlePayBill(id) {

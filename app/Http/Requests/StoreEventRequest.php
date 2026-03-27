@@ -13,6 +13,15 @@ class StoreEventRequest extends FormRequest
         return true;
     }
 
+    protected function failedValidation(\Illuminate\Contracts\Validation\Validator $validator)
+    {
+        \Illuminate\Support\Facades\Log::error('Event Validation Failed', [
+            'input' => $this->all(),
+            'errors' => $validator->errors()->toArray()
+        ]);
+        parent::failedValidation($validator);
+    }
+
     public function rules(): array
     {
         return [
