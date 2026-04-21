@@ -27,8 +27,9 @@ class CategoryController extends Controller
                     $query->where('active', true);
                 },
                 'monthlyBills' => function ($query) {
-                    $query->where('status', '!=', 'canceled');
-                }
+                    $query->whereNull('recurring_bill_id')
+                          ->where('status', '!=', 'canceled');
+                },
             ])
             ->orderBy('name')
             ->get();
@@ -71,8 +72,9 @@ class CategoryController extends Controller
                     $query->where('active', true);
                 },
                 'monthlyBills' => function ($query) {
-                    $query->where('status', '!=', 'canceled');
-                }
+                    $query->whereNull('recurring_bill_id')
+                          ->where('status', '!=', 'canceled');
+                },
             ])
             ->findOrFail($id);
 

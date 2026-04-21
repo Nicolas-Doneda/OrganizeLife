@@ -19,6 +19,8 @@ const MONTH_NAMES = [
     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
 ];
 
+import CurrencyInput from '../components/ui/CurrencyInput';
+
 const STATUS_CONFIG = {
     pending: { label: 'Pendente', color: 'var(--color-warning-600)', bg: 'var(--color-warning-50)' },
     received: { label: 'Recebido', color: 'var(--color-success-600)', bg: 'var(--color-success-50)' },
@@ -319,7 +321,7 @@ export default function IncomesPage() {
             )}
 
             {showModal && createPortal(
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={(e) => e.target === e.currentTarget && closeModal()}>
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
                     <div className="w-full max-w-lg rounded-2xl border p-6 shadow-lg" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-primary)', boxShadow: 'var(--shadow-lg)' }}>
                         <h3 className="mb-5 text-lg font-bold tracking-tight" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading)' }}>
                             {editingIncome ? 'Editar Entrada' : 'Nova Entrada de Dinheiro'}
@@ -335,7 +337,7 @@ export default function IncomesPage() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="mb-1.5 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Valor (R$)</label>
-                                    <input type="number" step="0.01" min="0" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} required placeholder="0,00"
+                                    <CurrencyInput value={form.amount} onChange={(v) => setForm({ ...form, amount: v })} required placeholder="0,00"
                                         className="focus-ring w-full rounded-lg border px-4 py-2.5 text-sm outline-none"
                                         style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-primary)', color: 'var(--text-primary)' }} />
                                 </div>

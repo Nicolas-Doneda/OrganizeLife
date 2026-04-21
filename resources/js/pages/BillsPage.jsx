@@ -16,12 +16,16 @@ import {
     Calendar,
     Trash2,
     CreditCard,
+    Filter,
 } from 'lucide-react';
+import BillModal from '../components/ui/modals/BillModal';
 
 const MONTH_NAMES = [
     '', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
 ];
+
+import CurrencyInput from '../components/ui/CurrencyInput';
 
 const STATUS_CONFIG = {
     pending: { label: 'Pendente', color: 'var(--color-warning-600)', bg: 'var(--color-warning-50)' },
@@ -63,19 +67,6 @@ export default function BillsPage() {
     // Modal state
     const [showModal, setShowModal] = useState(false);
     const [editingBill, setEditingBill] = useState(null);
-    const [isRecurring, setIsRecurring] = useState(false);
-    const [isInstallment, setIsInstallment] = useState(false);
-    const [installmentMath, setInstallmentMath] = useState('installment_value'); // 'installment_value' or 'total_value'
-    const [form, setForm] = useState({
-        name_snapshot: '',
-        expected_amount: '',
-        due_date: '',
-        due_day: '1',
-        category_id: '',
-        notes: '',
-        wallet_id: '',
-        installments_count: '2',
-    });
 
     const fetchBills = useCallback(async () => {
         setLoading(true);
@@ -123,6 +114,7 @@ export default function BillsPage() {
 
     async function handleDelete(bill) {
         let deleteAll = false;
+        let deleteRecurring = false;
 
         if (bill.installment_group_id) {
             const result = window.confirm('Esta é uma conta parcelada.\n\nClique em OK para excluir esta e TODAS AS PRÓXIMAS parcelas.\nClique em Cancelar para excluir APENAS ESTA parcela (O valor das outras será mantido).');
@@ -132,32 +124,36 @@ export default function BillsPage() {
                 const confirmJustOne = window.confirm('Tem certeza que deseja excluir APENAS ESTA parcela?');
                 if (!confirmJustOne) return;
             }
+        } else if (bill.recurring_bill_id) {
+            deleteRecurring = window.confirm('Esta é uma conta frequente (recorrente).\n\nDeseja cancelar também a "Assinatura" para que esta conta NÃO SEJA MAIS GERADA nos próximos meses?\n\n(OK = Cancelar assinatura e deletar mês atual | Cancelar = Deletar apenas mês atual)');
         } else {
-            if (!window.confirm('Excluir esta conta mensal?')) return;
+            if (!window.confirm('Excluir esta conta?')) return;
         }
 
         try {
             await api.delete(`/monthly-bills/${bill.id}`, {
-                params: { delete_all_installments: deleteAll ? 1 : 0 }
+                params: { 
+                    delete_all_installments: deleteAll ? 1 : 0,
+                    delete_recurring: deleteRecurring ? 1 : 0
+                }
             });
             fetchBills();
         } catch (err) { console.error('Erro:', err); }
     }
 
-    async function handleSubmit(e) {
-        e.preventDefault();
+    async function handleSave({ payload, isRecurring, isInstallment, installmentMath }) {
         try {
             if (editingBill) {
-                let recurringId = form.recurring_bill_id || editingBill.recurring_bill_id;
+                let recurringId = payload.recurring_bill_id || editingBill.recurring_bill_id;
 
                 // Se marcou para ser recorrente, mas a conta original NÃO era
                 if (isRecurring && !editingBill.recurring_bill_id) {
-                    const dueDay = parseInt(form.due_day) || 1;
+                    const dueDay = parseInt(payload.due_day) || 1;
                     const recurringRes = await api.post('/recurring-bills', {
-                        name: form.name_snapshot,
-                        expected_amount: parseFloat(form.expected_amount) || 0,
+                        name: payload.name_snapshot,
+                        expected_amount: parseFloat(payload.expected_amount) || 0,
                         due_day: dueDay,
-                        category_id: form.category_id || null,
+                        category_id: payload.category_id || null,
                     });
                     recurringId = recurringRes.data.data.id;
                 }
@@ -167,9 +163,9 @@ export default function BillsPage() {
                     recurringId = null;
                 }
 
-                let dueDate = form.due_date;
-                if (isRecurring && form.due_day) {
-                    const dueDay = parseInt(form.due_day) || 1;
+                let dueDate = payload.due_date;
+                if (isRecurring && payload.due_day) {
+                    const dueDay = parseInt(payload.due_day) || 1;
                     dueDate = `${year}-${String(month).padStart(2, '0')}-${String(dueDay).padStart(2, '0')}`;
                 }
 
@@ -180,55 +176,55 @@ export default function BillsPage() {
 
                 // Editar conta existente
                 await api.put(`/monthly-bills/${editingBill.id}`, {
-                    ...form,
+                    ...payload,
                     due_date: dueDate,
-                    expected_amount: parseFloat(form.expected_amount) || 0,
-                    category_id: form.category_id || null,
-                    wallet_id: form.wallet_id || null,
+                    expected_amount: parseFloat(payload.expected_amount) || 0,
+                    category_id: payload.category_id || null,
+                    wallet_id: payload.wallet_id || null,
                     recurring_bill_id: recurringId,
                     update_all_installments: updateAll ? 1 : 0
                 });
             } else if (isRecurring) {
                 // Criar recorrente: salva em recurring_bills E cria a primeira monthly_bill
-                const dueDay = parseInt(form.due_day) || 1;
+                const dueDay = parseInt(payload.due_day) || 1;
                 const recurringRes = await api.post('/recurring-bills', {
-                    name: form.name_snapshot,
-                    expected_amount: parseFloat(form.expected_amount) || 0,
+                    name: payload.name_snapshot,
+                    expected_amount: parseFloat(payload.expected_amount) || 0,
                     due_day: dueDay,
-                    category_id: form.category_id || null,
+                    category_id: payload.category_id || null,
                 });
 
                 // Criar a monthly_bill deste mes vinculada a recorrente
                 const dueDate = `${year}-${String(month).padStart(2, '0')}-${String(dueDay).padStart(2, '0')}`;
                 await api.post('/monthly-bills', {
-                    name_snapshot: form.name_snapshot,
-                    expected_amount: parseFloat(form.expected_amount) || 0,
+                    name_snapshot: payload.name_snapshot,
+                    expected_amount: parseFloat(payload.expected_amount) || 0,
                     due_date: dueDate,
                     year,
                     month,
-                    category_id: form.category_id || null,
+                    category_id: payload.category_id || null,
                     recurring_bill_id: recurringRes.data.data.id,
-                    notes: form.notes || null,
-                    wallet_id: form.wallet_id || null,
+                    notes: payload.notes || null,
+                    wallet_id: payload.wallet_id || null,
                 });
             } else {
                 // Criar conta avulsa ou parcelada
-                let finalAmount = parseFloat(form.expected_amount) || 0;
+                let finalAmount = parseFloat(payload.expected_amount) || 0;
 
                 if (isInstallment && installmentMath === 'total_value') {
-                    const count = parseInt(form.installments_count) || 2;
+                    const count = parseInt(payload.installments_count) || 2;
                     finalAmount = finalAmount / count;
                 }
 
                 await api.post('/monthly-bills', {
-                    ...form,
+                    ...payload,
                     year,
                     month,
                     expected_amount: finalAmount,
-                    category_id: form.category_id || null,
-                    wallet_id: form.wallet_id || null,
+                    category_id: payload.category_id || null,
+                    wallet_id: payload.wallet_id || null,
                     is_installment: isInstallment,
-                    installments_count: isInstallment ? parseInt(form.installments_count) || 2 : undefined
+                    installments_count: isInstallment ? parseInt(payload.installments_count) || 2 : undefined
                 });
             }
 
@@ -239,43 +235,17 @@ export default function BillsPage() {
 
     function openCreate() {
         setEditingBill(null);
-        setIsRecurring(false);
-        setIsInstallment(false);
-        setInstallmentMath('installment_value');
-        setForm({
-            name_snapshot: '',
-            expected_amount: '',
-            due_date: `${year}-${String(month).padStart(2, '0')}-01`,
-            due_day: '1',
-            category_id: '',
-            notes: '',
-            wallet_id: '',
-            installments_count: '2',
-        });
         setShowModal(true);
     }
 
     function openEdit(bill) {
         setEditingBill(bill);
-        setIsRecurring(!!bill.recurring_bill_id);
-        setIsInstallment(false); // Edit modal doesn't support changing TO an installment 
-        setForm({
-            name_snapshot: bill.name_snapshot,
-            expected_amount: String(bill.expected_amount),
-            due_date: normalizeDate(bill.due_date),
-            due_day: bill.due_date ? String(parseInt(bill.due_date.split('-')[2])) : '1',
-            category_id: bill.category_id ? String(bill.category_id) : '',
-            notes: bill.notes || '',
-            wallet_id: bill.wallet_id ? String(bill.wallet_id) : '',
-            installments_count: '2',
-        });
         setShowModal(true);
     }
 
     function closeModal() {
         setShowModal(false);
         setEditingBill(null);
-        setIsRecurring(false);
     }
 
     function prevMonth() {
@@ -294,9 +264,18 @@ export default function BillsPage() {
         .filter((b) => !search || b.name_snapshot.toLowerCase().includes(search.toLowerCase()));
 
     const CATEGORY_COLORS = {
-        gray: '#6b7280', red: '#ef4444', orange: '#f97316', yellow: '#eab308',
-        green: '#22c55e', teal: '#14b8a6', blue: '#3b82f6', indigo: '#6366f1',
-        purple: '#a855f7', pink: '#ec4899',
+        gray: 'var(--color-accent-400)', red: 'var(--color-danger-500)', orange: 'var(--color-warning-600)', yellow: 'var(--color-warning-500)',
+        green: 'var(--color-success-500)', teal: 'var(--color-primary-400)', blue: 'var(--color-primary-500)', indigo: 'var(--color-primary-600)',
+        purple: 'var(--color-accent-500)', pink: 'var(--color-danger-400)',
+        rose: '#e11d48', amber: '#d97706', emerald: '#059669', cyan: '#0891b2', sky: '#0284c7', violet: '#7c3aed',
+    };
+
+    const displayedBillsForTotals = bills.filter((b) => filterCategory === 'all' || String(b.category_id) === filterCategory);
+    const calculatedTotals = {
+        expected: displayedBillsForTotals.reduce((acc, b) => acc + parseFloat(b.expected_amount || 0), 0),
+        paid: displayedBillsForTotals.filter(b => b.status === 'paid').reduce((acc, b) => acc + parseFloat(b.paid_amount || b.expected_amount || 0), 0),
+        pending: displayedBillsForTotals.filter(b => b.status === 'pending').reduce((acc, b) => acc + parseFloat(b.expected_amount || 0), 0),
+        overdue: displayedBillsForTotals.filter(b => b.status === 'overdue').reduce((acc, b) => acc + parseFloat(b.expected_amount || 0), 0),
     };
 
     return (
@@ -332,10 +311,10 @@ export default function BillsPage() {
 
             {/* Summary Cards */}
             <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <MiniCard label="Previsto" value={formatCurrency(totals.expected)} />
-                <MiniCard label="Pago" value={formatCurrency(totals.paid)} color="var(--color-success-600)" />
-                <MiniCard label="Pendente" value={formatCurrency(totals.pending)} color="var(--color-warning-600)" />
-                <MiniCard label="Atrasado" value={formatCurrency(totals.overdue)} color="var(--color-danger-600)" />
+                <MiniCard label="Previsto" value={formatCurrency(calculatedTotals.expected)} />
+                <MiniCard label="Pago" value={formatCurrency(calculatedTotals.paid)} color="var(--color-success-600)" />
+                <MiniCard label="Pendente" value={formatCurrency(calculatedTotals.pending)} color="var(--color-warning-600)" />
+                <MiniCard label="Atrasado" value={formatCurrency(calculatedTotals.overdue)} color="var(--color-danger-600)" />
             </div>
 
             {/* Filters */}
@@ -390,12 +369,12 @@ export default function BillsPage() {
                             onClick={() => setFilterCategory(String(cat.id))}
                             className="shrink-0 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium border transition-colors"
                             style={{
-                                borderColor: filterCategory === String(cat.id) ? (CATEGORY_COLORS[cat.color] || '#6b7280') : 'var(--border-primary)',
-                                backgroundColor: filterCategory === String(cat.id) ? (CATEGORY_COLORS[cat.color] || '#6b7280') + '15' : 'transparent',
-                                color: filterCategory === String(cat.id) ? (CATEGORY_COLORS[cat.color] || '#6b7280') : 'var(--text-tertiary)',
+                                borderColor: filterCategory === String(cat.id) ? (CATEGORY_COLORS[cat.color] || 'var(--color-accent-400)') : 'var(--border-primary)',
+                                backgroundColor: filterCategory === String(cat.id) ? `color-mix(in srgb, ${CATEGORY_COLORS[cat.color] || 'var(--color-accent-400)'} 15%, transparent)` : 'transparent',
+                                color: filterCategory === String(cat.id) ? (CATEGORY_COLORS[cat.color] || 'var(--color-accent-400)') : 'var(--text-tertiary)',
                             }}
                         >
-                            <div className="h-2 w-2 rounded-full" style={{ backgroundColor: CATEGORY_COLORS[cat.color] || '#6b7280' }} />
+                            <div className="h-2 w-2 rounded-full" style={{ backgroundColor: CATEGORY_COLORS[cat.color] || 'var(--color-accent-400)' }} />
                             {cat.name}
                         </button>
                     ))}
@@ -434,170 +413,14 @@ export default function BillsPage() {
                 </div>
             )}
 
-            {/* Modal Criar/Editar */}
-            {showModal && createPortal(
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={(e) => e.target === e.currentTarget && closeModal()}>
-                    <div className="w-full max-w-lg rounded-2xl border p-6 max-h-[90vh] overflow-y-auto shadow-lg" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-primary)', boxShadow: 'var(--shadow-lg)' }}>
-                        <h3 className="mb-5 text-lg font-bold tracking-tight" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading)' }}>
-                            {editingBill ? 'Editar Conta' : 'Nova Conta'}
-                        </h3>
-
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            {/* Nome */}
-                            <div>
-                                <label className="mb-1.5 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Nome da conta</label>
-                                <input type="text" value={form.name_snapshot} onChange={(e) => setForm({ ...form, name_snapshot: e.target.value })} required placeholder="Ex: Netflix, Aluguel, Conta de luz"
-                                    className="focus-ring w-full rounded-lg border px-4 py-2.5 text-sm outline-none"
-                                    style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-primary)', color: 'var(--text-primary)' }} />
-                            </div>
-
-                            {/* Valor + Vencimento */}
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="mb-1.5 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-                                        {isInstallment && installmentMath === 'total_value' ? 'Valor Total (R$)' : 'Valor (R$)'}
-                                    </label>
-                                    <input type="number" step="0.01" min="0" value={form.expected_amount} onChange={(e) => setForm({ ...form, expected_amount: e.target.value })} required placeholder="0,00"
-                                        className="focus-ring w-full rounded-lg border px-4 py-2.5 text-sm outline-none"
-                                        style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-primary)', color: 'var(--text-primary)' }} />
-                                </div>
-                                <div>
-                                    <label className="mb-1.5 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-                                        {isRecurring || isInstallment ? 'Dia do vencimento' : 'Vencimento'}
-                                    </label>
-                                    {isRecurring || isInstallment ? (
-                                        <select value={isInstallment ? (form.due_date ? String(parseInt(form.due_date.split('-')[2])) : form.due_day) : form.due_day} onChange={(e) => {
-                                            const day = e.target.value;
-                                            setForm(prev => {
-                                                const newForm = { ...prev, due_day: day };
-                                                if (isInstallment) {
-                                                    const dDate = prev.due_date ? new Date(prev.due_date) : new Date();
-                                                    newForm.due_date = `${dDate.getFullYear()}-${String(dDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                                                }
-                                                return newForm;
-                                            });
-                                        }} required
-                                            className="focus-ring w-full rounded-lg border px-4 py-2.5 text-sm outline-none"
-                                            style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-primary)', color: 'var(--text-primary)' }}>
-                                            {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
-                                                <option key={d} value={d}>Dia {d}</option>
-                                            ))}
-                                        </select>
-                                    ) : (
-                                        <input type="date" value={form.due_date} onChange={(e) => setForm({ ...form, due_date: e.target.value })} required
-                                            className="focus-ring w-full rounded-lg border px-4 py-2.5 text-sm outline-none"
-                                            style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-primary)', color: 'var(--text-primary)' }} />
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Installment Options (Only when creating) */}
-                            {isInstallment && !editingBill && (
-                                <div className="grid grid-cols-2 gap-4 p-4 mt-2 rounded-xl bg-[var(--bg-tertiary)]/30 border" style={{ borderColor: 'var(--color-primary-200)' }}>
-                                    <div>
-                                        <label className="mb-1.5 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Em quantas vezes?</label>
-                                        <select value={form.installments_count} onChange={(e) => setForm({ ...form, installments_count: e.target.value })} required
-                                            className="focus-ring w-full rounded-lg border px-4 py-2.5 text-sm outline-none"
-                                            style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-primary)', color: 'var(--text-primary)' }}>
-                                            {Array.from({ length: 36 }, (_, i) => i + 2).map((num) => (
-                                                <option key={num} value={num}>{num}x parcelas</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="mb-1.5 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>O valor digitado é...</label>
-                                        <select value={installmentMath} onChange={(e) => setInstallmentMath(e.target.value)} required
-                                            className="focus-ring w-full rounded-lg border px-4 py-2.5 text-sm outline-none"
-                                            style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-primary)', color: 'var(--text-primary)' }}>
-                                            <option value="installment_value">Valor da Parcela</option>
-                                            <option value="total_value">Valor Total da Compra</option>
-                                        </select>
-                                    </div>
-                                    {installmentMath === 'total_value' && form.expected_amount && (
-                                        <div className="col-span-2 text-xs font-medium px-2 py-1 text-[var(--color-primary-600)]">
-                                            Valor de cada parcela: {formatCurrency((parseFloat(form.expected_amount) || 0) / parseInt(form.installments_count))}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* Categoria */}
-                            <div>
-                                <label className="mb-1.5 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Categoria</label>
-                                <div className="flex gap-2">
-                                    <select value={form.category_id} onChange={(e) => setForm({ ...form, category_id: e.target.value })}
-                                        className="focus-ring flex-1 rounded-lg border px-4 py-2.5 text-sm outline-none"
-                                        style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-primary)', color: 'var(--text-primary)' }}>
-                                        <option value="">Sem categoria</option>
-                                        {categories.map((cat) => (
-                                            <option key={cat.id} value={cat.id}>{cat.name}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
-
-                            {/* Carteira */}
-                            <div>
-                                <label className="mb-1.5 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Carteira / Forma de pagamento</label>
-                                <select value={form.wallet_id} onChange={(e) => setForm({ ...form, wallet_id: e.target.value })}
-                                    className="focus-ring w-full rounded-lg border px-4 py-2.5 text-sm outline-none"
-                                    style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-primary)', color: 'var(--text-primary)' }}>
-                                    <option value="">Sem carteira vinculada</option>
-                                    {wallets.map((w) => (
-                                        <option key={w.id} value={w.id}>{w.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            {/* Type Selection (Only when creating) */}
-                            {!editingBill && (
-                                <div className="grid grid-cols-2 gap-3 mt-2">
-                                    <div
-                                        className="flex flex-col items-center justify-center gap-1 rounded-xl border p-3 cursor-pointer transition-all"
-                                        style={{
-                                            borderColor: isRecurring && !isInstallment ? 'var(--color-primary-500)' : 'var(--border-primary)',
-                                            backgroundColor: isRecurring && !isInstallment ? 'var(--color-primary-50)' : 'var(--bg-card)',
-                                        }}
-                                        onClick={() => { setIsRecurring(!isRecurring); setIsInstallment(false); }}
-                                    >
-                                        <Repeat size={18} style={{ color: isRecurring && !isInstallment ? 'var(--color-primary-600)' : 'var(--text-tertiary)' }} />
-                                        <p className="text-sm font-semibold" style={{ color: isRecurring && !isInstallment ? 'var(--color-primary-700)' : 'var(--text-secondary)' }}>Conta Recorrente</p>
-                                    </div>
-                                    <div
-                                        className="flex flex-col items-center justify-center gap-1 rounded-xl border p-3 cursor-pointer transition-all"
-                                        style={{
-                                            borderColor: isInstallment ? 'var(--color-primary-500)' : 'var(--border-primary)',
-                                            backgroundColor: isInstallment ? 'var(--color-primary-50)' : 'var(--bg-card)',
-                                        }}
-                                        onClick={() => { setIsInstallment(!isInstallment); setIsRecurring(false); }}
-                                    >
-                                        <CreditCard size={18} style={{ color: isInstallment ? 'var(--color-primary-600)' : 'var(--text-tertiary)' }} />
-                                        <p className="text-sm font-semibold" style={{ color: isInstallment ? 'var(--color-primary-700)' : 'var(--text-secondary)' }}>Compra Parcelada</p>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Notas */}
-                            <div>
-                                <label className="mb-1.5 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Observações (opcional)</label>
-                                <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} placeholder="Alguma observação..."
-                                    className="focus-ring w-full resize-none rounded-lg border px-4 py-2.5 text-sm outline-none"
-                                    style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-primary)', color: 'var(--text-primary)' }} />
-                            </div>
-
-                            {/* Actions */}
-                            <div className="flex justify-end gap-3 pt-2">
-                                <button type="button" onClick={closeModal} className="rounded-lg px-4 py-2.5 text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Cancelar</button>
-                                <button type="submit" className="btn-primary px-4 py-2.5">
-                                    {editingBill ? 'Salvar' : 'Criar Conta'}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div >,
-                document.body
-            )
-            }
+            <BillModal
+                isOpen={showModal}
+                onClose={closeModal}
+                onSave={handleSave}
+                bill={editingBill}
+                categories={categories}
+                wallets={wallets}
+            />
         </AppLayout >
     );
 }

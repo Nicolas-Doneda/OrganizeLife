@@ -5,105 +5,109 @@
 
 /* ============================================================
    DESIGN SYSTEM — OrganizeLife v2
-   Premium Dark/Light mode — Inspired by claude-cookbooks aesthetics
+   Palette: Emerald Forest — profundo, moderno, tradicional
+   Sem teal neon. Verde como identidade, fundos quentes neutros.
    Typography: Plus Jakarta Sans (headings) + Geist (body)
-   Palette: Teal-green base + Amber/Gold accents
    ============================================================ */
 
 @theme {
     --font-sans: 'Geist', 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
     --font-heading: 'Plus Jakarta Sans', 'Geist', ui-sans-serif, system-ui, sans-serif;
 
-    /* Primary — Teal / Sophisticated Green */
-    --color-primary-50: #effefb;
-    --color-primary-100: #c8fff4;
-    --color-primary-200: #91feea;
-    --color-primary-300: #52f5dc;
-    --color-primary-400: #20e0c8;
-    --color-primary-500: #0bc4af;
-    --color-primary-600: #069e8f;
-    --color-primary-700: #097e74;
-    --color-primary-800: #0c645e;
-    --color-primary-900: #0f534e;
+    /* Primary — Emerald Forest (verde profundo, sem neon) */
+    --color-primary-50:  oklch(97%   0.016 152);
+    --color-primary-100: oklch(93%   0.030 151);
+    --color-primary-200: oklch(86%   0.055 150);
+    --color-primary-300: oklch(76%   0.085 149);
+    --color-primary-400: oklch(64%   0.110 148);
+    --color-primary-500: oklch(52%   0.120 147);
+    --color-primary-600: oklch(42%   0.108 148);
+    --color-primary-700: oklch(34%   0.090 149);
+    --color-primary-800: oklch(27%   0.072 150);
+    --color-primary-900: oklch(21%   0.055 151);
 
-    /* Success — Emerald */
-    --color-success-50: #ecfdf5;
-    --color-success-500: #10b981;
-    --color-success-600: #059669;
+    /* Success — mesmo hue, mais vivo */
+    --color-success-50:  oklch(97%   0.018 148);
+    --color-success-500: oklch(55%   0.130 145);
+    --color-success-600: oklch(46%   0.115 146);
 
-    /* Danger — Coral/Rose */
-    --color-danger-50: #fff5f5;
-    --color-danger-500: #ef4444;
-    --color-danger-600: #dc2626;
+    /* Danger — Rose sóbrio */
+    --color-danger-50:  oklch(97%   0.014 18);
+    --color-danger-500: oklch(54%   0.185 22);
+    --color-danger-600: oklch(46%   0.170 22);
 
-    /* Warning — Amber/Gold */
-    --color-warning-50: #fffbeb;
-    --color-warning-300: #fcd34d;
-    --color-warning-500: #f59e0b;
-    --color-warning-600: #d97706;
+    /* Warning — Âmbar quente */
+    --color-warning-50:  oklch(97%   0.022 78);
+    --color-warning-300: oklch(83%   0.110 78);
+    --color-warning-500: oklch(67%   0.145 66);
+    --color-warning-600: oklch(57%   0.130 64);
 
-    /* Accent — Gold */
-    --color-accent-400: #fbbf24;
-    --color-accent-500: #f59e0b;
+    /* Accent — Pedra/Stone quente */
+    --color-accent-400: oklch(72%   0.045 90);
+    --color-accent-500: oklch(58%   0.040 88);
 }
 
 /* ============================================================
-   LIGHT MODE — Warm & Refined
+   LIGHT MODE — Creme/Stone, quente, moderno tradicional
    ============================================================ */
 :root {
-    --bg-primary: #fafbfc;
-    --bg-secondary: #f3f4f6;
-    --bg-tertiary: #ffffff;
-    --bg-sidebar: #ffffff;
-    --bg-card: #ffffff;
-    --bg-input: #f9fafb;
-    --bg-hover: #f3f4f6;
-    --bg-active: #e8f5f3;
+    /* Fundos creme — papel, não tech cinza */
+    --bg-primary:   oklch(98%   0.006 90);
+    --bg-secondary: oklch(95.5% 0.010 90);
+    --bg-tertiary:  oklch(99.5% 0.003 90);
+    --bg-sidebar:   oklch(99.5% 0.003 90);
+    --bg-card:      oklch(99.5% 0.003 90);
+    --bg-input:     oklch(97%   0.006 90);
+    --bg-hover:     oklch(93%   0.012 90);
+    --bg-active:    oklch(91%   0.022 148);
 
-    --border-primary: #e5e7eb;
-    --border-secondary: #d1d5db;
-    --border-focus: var(--color-primary-500);
+    --border-primary:   oklch(88%   0.010 90);
+    --border-secondary: oklch(82%   0.014 90);
+    --border-focus:     var(--color-primary-500);
 
-    --text-primary: #111827;
-    --text-secondary: #4b5563;
-    --text-tertiary: #9ca3af;
-    --text-inverse: #ffffff;
+    /* Texto com leve tinta quente — não cinza puro */
+    --text-primary:   oklch(20%   0.010 90);
+    --text-secondary: oklch(44%   0.010 90);
+    --text-tertiary:  oklch(64%   0.007 90);
+    --text-inverse:   oklch(99%   0.000 90);
 
-    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.04);
-    --shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.04);
-    --shadow-lg: 0 12px 28px -4px rgb(0 0 0 / 0.1), 0 4px 8px -2px rgb(0 0 0 / 0.04);
-    --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.02);
-    --shadow-glow: 0 0 20px -4px rgba(11, 196, 175, 0.15);
+    --shadow-sm:   0 1px 2px 0 rgb(0 0 0 / 0.04);
+    --shadow-md:   0 4px 12px -2px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.04);
+    --shadow-lg:   0 12px 28px -4px rgb(0 0 0 / 0.10), 0 4px 8px -2px rgb(0 0 0 / 0.04);
+    --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.03);
+    --shadow-glow: 0 0 20px -6px oklch(42% 0.108 148 / 0.20);
 }
 
 /* ============================================================
-   DARK MODE — Cinza escuro agradável
+   DARK MODE — Slate escuro, tinta verde suave, sem neon
    ============================================================ */
 .dark {
-    --bg-primary: #0f0f0f;
-    --bg-secondary: #0f0f0f;
-    --bg-tertiary: #171717;
-    --bg-sidebar: #141414;
-    --bg-card: #1a1a1a;
-    --bg-input: #141414;
-    --bg-hover: #222222;
-    --bg-active: #1a2e2b;
+    /* Fundos slate escuro, não preto puro */
+    --bg-primary:   oklch(14%   0.010 150);
+    --bg-secondary: oklch(13%   0.008 150);
+    --bg-tertiary:  oklch(17%   0.012 150);
+    --bg-sidebar:   oklch(15%   0.010 150);
+    --bg-card:      oklch(18%   0.012 150);
+    --bg-input:     oklch(16%   0.010 150);
+    --bg-hover:     oklch(21%   0.013 150);
+    --bg-active:    oklch(24%   0.020 150);
 
-    --border-primary: #2a2a2a;
-    --border-secondary: #3a3a3a;
-    --border-focus: var(--color-primary-500);
+    --border-primary:   oklch(26%   0.014 150);
+    --border-secondary: oklch(33%   0.016 150);
+    --border-focus:     var(--color-primary-400);
 
-    --text-primary: #f0f0f0;
-    --text-secondary: #a0a0a0;
-    --text-tertiary: #666666;
-    --text-inverse: #ffffff;
+    --text-primary:   oklch(94%   0.005 150);
+    --text-secondary: oklch(67%   0.008 150);
+    --text-tertiary:  oklch(46%   0.006 150);
+    --text-inverse:   oklch(99%   0.000 150);
 
-    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
-    --shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.5), 0 2px 4px -2px rgb(0 0 0 / 0.3);
-    --shadow-lg: 0 12px 28px -4px rgb(0 0 0 / 0.6), 0 4px 8px -2px rgb(0 0 0 / 0.3);
-    --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.3), 0 1px 2px -1px rgb(0 0 0 / 0.2);
-    --shadow-glow: 0 0 20px -4px rgba(11, 196, 175, 0.1);
+    --shadow-sm:   0 1px 2px 0 rgb(0 0 0 / 0.45);
+    --shadow-md:   0 4px 12px -2px rgb(0 0 0 / 0.55), 0 2px 4px -2px rgb(0 0 0 / 0.35);
+    --shadow-lg:   0 12px 28px -4px rgb(0 0 0 / 0.65), 0 4px 8px -2px rgb(0 0 0 / 0.35);
+    --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.35), 0 1px 2px -1px rgb(0 0 0 / 0.25);
+    --shadow-glow: 0 0 20px -6px oklch(52% 0.120 147 / 0.16);
 }
+
 
 /* ============================================================
    BASE STYLES
@@ -193,7 +197,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .input-base:focus {
     border-color: var(--color-primary-500);
-    box-shadow: 0 0 0 3px rgba(11, 196, 175, 0.12);
+    box-shadow: 0 0 0 3px oklch(42% 0.108 148 / 0.12);
 }
 
 /* ============================================================
@@ -210,7 +214,7 @@ h1, h2, h3, h4, h5, h6 {
     font-size: 0.875rem;
     color: white;
     background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-700));
-    box-shadow: 0 2px 8px -2px rgba(6, 158, 143, 0.4);
+    box-shadow: 0 2px 8px -2px oklch(34% 0.090 149 / 0.28);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     overflow: hidden;
@@ -227,7 +231,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .btn-primary:hover {
     transform: translateY(-1px);
-    box-shadow: 0 4px 16px -2px rgba(6, 158, 143, 0.5);
+    box-shadow: 0 4px 14px -2px oklch(34% 0.090 149 / 0.38);
 }
 
 .btn-primary:hover::before {
@@ -235,7 +239,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .btn-primary:active {
-    transform: translateY(0);
+    transform: scale(0.95);
 }
 
 /* ============================================================

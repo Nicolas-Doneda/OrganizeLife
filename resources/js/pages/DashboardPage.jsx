@@ -30,13 +30,13 @@ import {
 } from 'recharts';
 
 const CHART_COLORS = [
-    '#0bc4af', // Teal primary
-    '#f59e0b', // Amber
-    '#3b82f6', // Blue
-    '#ec4899', // Pink
-    '#8b5cf6', // Violet
-    '#14b8a6', // Teal light
-    '#f97316', // Orange
+    'var(--color-primary-500)', // Emerald primary
+    'var(--color-warning-500)', // Amber
+    'var(--color-accent-500)',  // Stone
+    'var(--color-danger-500)',  // Rose
+    'var(--color-success-500)', // Emerald bright
+    'var(--color-primary-300)', // Emerald light
+    'var(--color-warning-300)', // Amber light
 ];
 
 const MONTH_NAMES = [
@@ -126,6 +126,9 @@ export default function DashboardPage() {
     const rules = summary.budget_rules || { needs: 50, wants: 30, savings: 20 };
     const spent = summary.budget_spent || { needs: 0, wants: 0, savings: 0 };
     const balanceExpected = totalIncome - (summary.total_expected || 0);
+
+    const allSavings = data?.savings || [];
+    const totalSaved = allSavings.reduce((acc, sv) => acc + Number(sv.current_amount || 0), 0);
 
     return (
         <AppLayout>
@@ -258,7 +261,75 @@ export default function DashboardPage() {
                                     budget={(totalIncome * rules.savings) / 100}
                                     color="var(--color-success-500)"
                                     savingMode={true}
+                                    totalSaved={totalSaved}
                                 />
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Minhas Caixinhas (Savings) */}
+                    {data?.savings && data.savings.length > 0 && (
+                        <div
+                            className="mb-6 rounded-2xl border p-6 flex flex-col gap-4 transition-all duration-300"
+                            style={{
+                                backgroundColor: 'var(--bg-card)',
+                                borderColor: 'var(--border-primary)',
+                                boxShadow: 'var(--shadow-card)',
+                            }}
+                        >
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-[16px] font-bold tracking-tight" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading)' }}>
+                                        Minhas Caixinhas (Reservas)
+                                    </h3>
+                                    <p className="text-sm mt-1 flex items-center gap-3" style={{ color: 'var(--text-tertiary)' }}>
+                                        <span>Total: <strong style={{ color: 'var(--color-success-600)' }}>{formatCurrency(totalSaved)}</strong></span>
+                                        <span>Este mês: <strong style={{ color: 'var(--text-primary)' }}>{formatCurrency(spent.savings)}</strong></span>
+                                    </p>
+                                </div>
+                                <Link
+                                    to="/savings"
+                                    className="text-sm font-semibold transition-colors flex items-center gap-1"
+                                    style={{ color: 'var(--color-primary-600)' }}
+                                >
+                                    Ver Detalhes<ArrowRight size={14} />
+                                </Link>
+                            </div>
+
+                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                                {data.savings.map((sv) => {
+                                    const percent = sv.target_amount > 0 ? Math.min((sv.current_amount / sv.target_amount) * 100, 100) : 0;
+                                    let trueColor = 'var(--color-danger-500)';
+                                    if (percent >= 100) trueColor = 'var(--color-success-500)';
+                                    else if (percent >= 60) trueColor = 'var(--color-primary-500)';
+                                    else if (percent >= 30) trueColor = 'var(--color-warning-500)';
+
+                                    return (
+                                        <div key={sv.id} className="rounded-xl border p-4 bg-[var(--bg-tertiary)]/20" style={{ borderColor: 'var(--border-secondary)' }}>
+                                            <div className="flex justify-between items-center mb-1">
+                                                <p className="text-sm font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>{sv.name}</p>
+                                            </div>
+                                            <div className="flex justify-between items-end mb-2">
+                                                <p className="text-[18px] font-bold tracking-tight" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading)' }}>
+                                                    {formatCurrency(sv.current_amount)}
+                                                </p>
+                                                {sv.target_amount > 0 && (
+                                                    <p className="text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>
+                                                        de {formatCurrency(sv.target_amount)}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            {sv.target_amount > 0 && (
+                                                <>
+                                                    <div className="h-2 w-full rounded-full overflow-hidden" style={{ backgroundColor: 'var(--bg-hover)' }}>
+                                                        <div className="h-full rounded-full transition-all duration-700" style={{ width: `${percent}%`, backgroundColor: trueColor }} />
+                                                    </div>
+                                                    <p className="text-[10px] font-bold uppercase mt-1.5 text-right" style={{ color: trueColor }}>{percent.toFixed(0)}% Alcançado</p>
+                                                </>
+                                            )}
+                                        </div>
+                                    )
+                                })}
                             </div>
                         </div>
                     )}
@@ -389,7 +460,7 @@ export default function DashboardPage() {
                             items={overdueBills}
                             emptyText="Nenhuma conta atrasada"
                             renderItem={(bill) => (
-                                <div key={bill.id} className="group flex items-center justify-between py-3 transition-colors hover:bg-red-50/50 dark:hover:bg-red-900/10 -mx-2 px-2 rounded-lg cursor-default">
+                                <div key={bill.id} className="group flex items-center justify-between py-3 transition-colors hover:bg-[var(--color-danger-50)] -mx-2 px-2 rounded-lg cursor-default">
                                     <div>
                                         <p className="text-[14px] font-semibold tracking-tight" style={{ color: 'var(--color-danger-600)' }}>
                                             {bill.name_snapshot}
@@ -509,10 +580,11 @@ function EmptyState({ text }) {
     );
 }
 
-function BudgetProgress({ label, spent, budget, color, savingMode = false }) {
-    const percent = budget > 0 ? Math.min((spent / budget) * 100, 100) : 0;
+function BudgetProgress({ label, spent, budget, color, savingMode = false, totalSaved }) {
+    const percent = budget > 0 ? Math.min((spent / budget) * 100, 100) : (spent > 0 ? 100 : 0);
     const isOver = spent > budget && !savingMode;
-    const leftover = budget - spent;
+    const isSavingGoalMet = savingMode && spent >= budget && budget > 0;
+    const leftover = Math.abs(budget - spent);
 
     return (
         <div>
@@ -535,15 +607,23 @@ function BudgetProgress({ label, spent, budget, color, savingMode = false }) {
                 />
             </div>
 
-            <p className="text-xs font-semibold mt-2" style={{ color: isOver ? 'var(--color-danger-600)' : 'var(--text-tertiary)' }}>
+            <p className="text-xs font-semibold mt-2" style={{ color: isOver ? 'var(--color-danger-600)' : isSavingGoalMet ? 'var(--color-success-600)' : 'var(--text-tertiary)' }}>
                 {isOver ? (
-                    `Excedeu ${formatCurrency(spent - budget)}`
+                    `Excedeu ${formatCurrency(leftover)}`
+                ) : isSavingGoalMet ? (
+                    `Meta superada! Você tem ${formatCurrency(leftover)} a mais`
                 ) : savingMode ? (
-                    `Falta aplicar ${formatCurrency(leftover)}`
+                    `Faltam ${formatCurrency(leftover)}`
                 ) : (
                     `Ainda pode gastar ${formatCurrency(leftover)}`
                 )}
             </p>
+
+            {savingMode && totalSaved > 0 && (
+                <p className="text-[11px] font-medium mt-1.5 flex items-center gap-1" style={{ color: 'var(--color-success-600)' }}>
+                    Total em reservas: {formatCurrency(totalSaved)}
+                </p>
+            )}
         </div>
     );
 }

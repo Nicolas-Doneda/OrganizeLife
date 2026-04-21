@@ -378,7 +378,7 @@ export default function CalendarPage() {
                                                 <div className="space-y-0.5">
                                                     {dayData.bills.slice(0, 2).map((bill) => (
                                                         <div key={`b-${bill.id}`} className="flex items-center gap-1 rounded px-1 py-0.5 text-[10px] font-medium truncate"
-                                                            style={{ backgroundColor: STATUS_COLORS[bill.status] + '20', color: STATUS_COLORS[bill.status] }}>
+                                                            style={{ backgroundColor: `color-mix(in srgb, ${STATUS_COLORS[bill.status]} 20%, transparent)`, color: STATUS_COLORS[bill.status] }}>
                                                             <Receipt size={8} className="shrink-0" />
                                                             <span className="truncate">{bill.name_snapshot}</span>
                                                         </div>
@@ -399,7 +399,7 @@ export default function CalendarPage() {
                                                     ))}
                                                     {dayData.events.slice(0, 2).map((event, eIdx) => (
                                                         <div key={`e-${event.id}-${eIdx}`} className="flex items-center gap-1 rounded px-1 py-0.5 text-[10px] font-medium truncate"
-                                                            style={{ backgroundColor: PRIORITY_COLORS[event.priority] + '20', color: PRIORITY_COLORS[event.priority] }}>
+                                                            style={{ backgroundColor: `color-mix(in srgb, ${PRIORITY_COLORS[event.priority]} 20%, transparent)`, color: PRIORITY_COLORS[event.priority] }}>
                                                             {event._virtual ? <Repeat size={8} className="shrink-0" /> : <CalendarDays size={8} className="shrink-0" />}
                                                             <span className="truncate">{event.title}</span>
                                                         </div>
@@ -552,7 +552,7 @@ export default function CalendarPage() {
                                                         )}
                                                         <div className="mt-1 flex items-center gap-2">
                                                             <span className="inline-block rounded-full px-2 py-0.5 text-[10px] font-medium"
-                                                                style={{ backgroundColor: PRIORITY_COLORS[event.priority] + '20', color: PRIORITY_COLORS[event.priority] }}>
+                                                                style={{ backgroundColor: `color-mix(in srgb, ${PRIORITY_COLORS[event.priority]} 20%, transparent)`, color: PRIORITY_COLORS[event.priority] }}>
                                                                 {event.priority === 1 ? 'Alta' : event.priority === 3 ? 'Baixa' : 'Normal'}
                                                             </span>
                                                             {event._virtual && (
@@ -603,7 +603,7 @@ export default function CalendarPage() {
                                         <button key={p} type="button" onClick={() => setEventForm({ ...eventForm, priority: p })}
                                             className="flex-1 rounded-lg px-3 py-2 text-xs font-medium border transition-colors"
                                             style={{
-                                                backgroundColor: eventForm.priority === p ? PRIORITY_COLORS[p] + '15' : 'transparent',
+                                                backgroundColor: eventForm.priority === p ? `color-mix(in srgb, ${PRIORITY_COLORS[p]} 15%, transparent)` : 'transparent',
                                                 color: eventForm.priority === p ? PRIORITY_COLORS[p] : 'var(--text-tertiary)',
                                                 borderColor: eventForm.priority === p ? PRIORITY_COLORS[p] : 'var(--border-primary)',
                                             }}>
@@ -674,7 +674,7 @@ export default function CalendarPage() {
                             </div>
 
                             <div className="flex justify-end gap-3 pt-2">
-                                <button type="button" onClick={() => setShowEventModal(false)} className="rounded-lg px-4 py-2.5 text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Cancelar</button>
+                                <button type="button" onClick={() => setShowEventModal(false)} className="rounded-lg px-4 py-2.5 text-sm font-medium transition-all hover:bg-[var(--bg-hover)] active:scale-95" style={{ color: 'var(--text-secondary)' }}>Cancelar</button>
                                 <button type="submit" className="btn-primary px-4 py-2.5">{editingEvent ? 'Salvar' : 'Criar'}</button>
                             </div>
                         </form>

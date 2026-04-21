@@ -38,10 +38,7 @@ class UpdateCategoryRequest extends FormRequest
             'color' => [
                 'sometimes',
                 'string',
-                Rule::in([
-                    'gray', 'red', 'orange', 'yellow', 'green',
-                    'teal', 'blue', 'indigo', 'purple', 'pink',
-                ]),
+                'max:30',
             ],
 
             'icon' => ['nullable', 'string', 'max:10'],
@@ -49,7 +46,7 @@ class UpdateCategoryRequest extends FormRequest
             'budget_group' => [
                 'sometimes',
                 'string',
-                Rule::in(['needs', 'wants', 'savings']),
+                Rule::in(['needs', 'wants']),
             ],
         ];
     }
@@ -59,9 +56,9 @@ class UpdateCategoryRequest extends FormRequest
         return [
             'name.max' => 'O nome pode ter no máximo 60 caracteres.',
             'name.unique' => 'Você já tem uma categoria com esse nome.',
-            'color.in' => 'Cor inválida. Use: gray, red, orange, yellow, green, teal, blue, indigo, purple ou pink.',
+            'color.max' => 'Cor inválida (muito longa).',
             'icon.max' => 'O ícone pode ter no máximo 10 caracteres.',
-            'budget_group.in' => 'O grupo de orçamento deve ser: needs, wants ou savings.',
+            'budget_group.in' => 'O grupo de orçamento deve ser: needs ou wants.',
         ];
     }
 }

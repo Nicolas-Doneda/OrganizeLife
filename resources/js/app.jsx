@@ -19,6 +19,10 @@ import CalendarPage from './pages/CalendarPage';
 import CategoriesPage from './pages/CategoriesPage';
 import WalletsPage from './pages/WalletsPage';
 import ProfilePage from './pages/ProfilePage';
+import SavingsPage from './pages/SavingsPage';
+import GoogleCallbackPage from './pages/auth/GoogleCallbackPage';
+import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
+import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 
 // Error Boundary para capturar erros silenciosos de render
 class ErrorBoundary extends React.Component {
@@ -77,17 +81,7 @@ function GuestRoute({ children }) {
 }
 
 function HomeRoute() {
-    const { isAuthenticated, loading } = useAuth();
-
-    if (loading) {
-        return (
-            <div style={{ display: 'flex', minHeight: '100vh', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--bg-secondary)' }}>
-                <div style={{ width: 40, height: 40, border: '3px solid var(--border-secondary)', borderTopColor: 'var(--color-primary-600)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-            </div>
-        );
-    }
-
-    return isAuthenticated ? <Navigate to="/dashboard" replace /> : <LandingPage />;
+    return <LandingPage />;
 }
 
 function App() {
@@ -104,6 +98,9 @@ function App() {
                             <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
                             <Route path="/register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
                             <Route path="/2fa-verify" element={<GuestRoute><TwoFactorVerifyPage /></GuestRoute>} />
+                            <Route path="/google-callback" element={<GuestRoute><GoogleCallbackPage /></GuestRoute>} />
+                            <Route path="/forgot-password" element={<GuestRoute><ForgotPasswordPage /></GuestRoute>} />
+                            <Route path="/reset-password" element={<GuestRoute><ResetPasswordPage /></GuestRoute>} />
 
                             {/* Protected Routes */}
                             <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
@@ -112,6 +109,7 @@ function App() {
                             <Route path="/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
                             <Route path="/categories" element={<ProtectedRoute><CategoriesPage /></ProtectedRoute>} />
                             <Route path="/wallets" element={<ProtectedRoute><WalletsPage /></ProtectedRoute>} />
+                            <Route path="/savings" element={<ProtectedRoute><SavingsPage /></ProtectedRoute>} />
                             <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
 
                             {/* Redirect old specific routes to newer ones */}

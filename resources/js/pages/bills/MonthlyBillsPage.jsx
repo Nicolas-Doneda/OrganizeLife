@@ -13,6 +13,7 @@ import {
     Search,
     Filter,
 } from 'lucide-react';
+import BillModal from '../../components/ui/modals/BillModal';
 
 const MONTH_NAMES = [
     '', 'Janeiro', 'Fevereiro', 'Marco', 'Abril', 'Maio', 'Junho',
@@ -42,13 +43,6 @@ export default function MonthlyBillsPage() {
     // Modal state
     const [showModal, setShowModal] = useState(false);
     const [editingBill, setEditingBill] = useState(null);
-    const [form, setForm] = useState({
-        name_snapshot: '',
-        expected_amount: '',
-        due_date: '',
-        category_id: '',
-        notes: '',
-    });
 
     useEffect(() => {
         fetchBills();
@@ -95,15 +89,14 @@ export default function MonthlyBillsPage() {
         }
     }
 
-    async function handleSubmit(e) {
-        e.preventDefault();
+    async function handleSave({ payload }) {
         try {
             const data = {
-                ...form,
+                ...payload,
                 year,
                 month,
-                expected_amount: parseFloat(form.expected_amount) || 0,
-                category_id: form.category_id || null,
+                expected_amount: parseFloat(payload.expected_amount) || 0,
+                category_id: payload.category_id || null,
             };
 
             if (editingBill) {
@@ -114,7 +107,6 @@ export default function MonthlyBillsPage() {
 
             setShowModal(false);
             setEditingBill(null);
-            setForm({ name_snapshot: '', expected_amount: '', due_date: '', category_id: '', notes: '' });
             fetchBills();
         } catch (err) {
             console.error('Erro:', err);
@@ -123,25 +115,11 @@ export default function MonthlyBillsPage() {
 
     function openCreate() {
         setEditingBill(null);
-        setForm({
-            name_snapshot: '',
-            expected_amount: '',
-            due_date: `${year}-${String(month).padStart(2, '0')}-01`,
-            category_id: '',
-            notes: '',
-        });
         setShowModal(true);
     }
 
     function openEdit(bill) {
         setEditingBill(bill);
-        setForm({
-            name_snapshot: bill.name_snapshot,
-            expected_amount: bill.expected_amount,
-            due_date: bill.due_date,
-            category_id: bill.category_id || '',
-            notes: bill.notes || '',
-        });
         setShowModal(true);
     }
 
@@ -266,33 +244,15 @@ export default function MonthlyBillsPage() {
             )}
 
             {/* Modal */}
-            {showModal && createPortal(
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                    <div
-                        className="w-full max-w-md rounded-2xl border p-6 shadow-lg"
-                        style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-primary)', boxShadow: 'var(--shadow-lg)' }}
-                    >
-                        <h3 className="mb-4 text-lg font-bold tracking-tight" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading)' }}>
-                            {editingBill ? 'Editar Conta' : 'Nova Conta'}
-                        </h3>
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <FormField label="Nome" value={form.name_snapshot} onChange={(v) => setForm({ ...form, name_snapshot: v })} required />
-                            <FormField label="Valor" type="number" step="0.01" value={form.expected_amount} onChange={(v) => setForm({ ...form, expected_amount: v })} required />
-                            <FormField label="Vencimento" type="date" value={form.due_date} onChange={(v) => setForm({ ...form, due_date: v })} required />
-                            <FormField label="Observacoes" value={form.notes} onChange={(v) => setForm({ ...form, notes: v })} />
-                            <div className="flex justify-end gap-3 pt-2">
-                                <button type="button" onClick={() => setShowModal(false)} className="rounded-lg px-4 py-2.5 text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-                                    Cancelar
-                                </button>
-                                <button type="submit" className="btn-primary px-4 py-2.5">
-                                    {editingBill ? 'Salvar' : 'Criar'}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>,
-                document.body
-            )}
+            <BillModal
+                isOpen={showModal}
+                onClose={() => setShowModal(false)}
+                onSave={handleSave}
+                bill={editingBill}
+                lockedType="monthly"
+                categories={[]}
+                wallets={[]}
+            />
         </AppLayout>
     );
 }
@@ -399,19 +359,4 @@ function MiniStat({ label, value, color }) {
     );
 }
 
-function FormField({ label, value, onChange, type = 'text', required = false, ...props }) {
-    return (
-        <div>
-            <label className="mb-1.5 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>{label}</label>
-            <input
-                type={type}
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                required={required}
-                className="focus-ring w-full rounded-lg border px-4 py-2.5 text-sm outline-none"
-                style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-primary)', color: 'var(--text-primary)' }}
-                {...props}
-            />
-        </div>
-    );
 }

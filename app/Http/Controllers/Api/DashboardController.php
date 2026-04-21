@@ -56,10 +56,18 @@ class DashboardController extends Controller
             'savings' => $user->budget_savings_percent ?? 20,
         ];
         
+        $activeSavingIds = $user->savings()->pluck('id');
+
+        $savingsDepositedThisMonth = $user->savingDeposits()
+            ->whereIn('saving_id', $activeSavingIds)
+            ->whereYear('deposit_date', $year)
+            ->whereMonth('deposit_date', $month)
+            ->sum('amount');
+
         $financialSummary['budget_spent'] = [
             'needs' => $monthlyBills->filter(fn($b) => $b->category?->budget_group === 'needs')->sum('expected_amount'),
             'wants' => $monthlyBills->filter(fn($b) => $b->category?->budget_group === 'wants')->sum('expected_amount'),
-            'savings' => $monthlyBills->filter(fn($b) => $b->category?->budget_group === 'savings')->sum('expected_amount'),
+            'savings' => (float) $savingsDepositedThisMonth,
         ];
 
         //GASTOS POR CATEGORIA (para gráfico de pizza/rosca)
@@ -103,12 +111,16 @@ class DashboardController extends Controller
             ->limit(5)
             ->get();
 
+        //ECONOMIAS (SAVINGS)
+        $savings = $user->savings()->get();
+
         return response()->json([
             'financial_summary' => $financialSummary,
             'by_category' => $byCategory,
             'upcoming_bills' => $upcomingBills,
             'overdue_bills' => $overdueBills,
             'upcoming_events' => $upcomingEvents,
+            'savings' => $savings,
             'period' => [
                 'year' => $year,
                 'month' => $month,

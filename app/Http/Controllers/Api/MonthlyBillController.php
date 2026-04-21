@@ -161,11 +161,13 @@ class MonthlyBillController extends Controller
         $validated = $request->validated();
         $updateAll = $request->boolean('update_all_installments', false);
         
-        // Verifica se a data de vencimento foi alterada para o passado (para marcar como overdue)
-        if (isset($validated['due_date']) && $bill->status === MonthlyBill::STATUS_PENDING) {
+        // Verifica se a data de vencimento foi alterada para o passado (para marcar como overdue) ou volta para pendente se for futuro
+        if (isset($validated['due_date']) && in_array($bill->status, [MonthlyBill::STATUS_PENDING, MonthlyBill::STATUS_OVERDUE])) {
             $dueDate = \Carbon\Carbon::parse($validated['due_date']);
             if ($dueDate->isPast() && !$dueDate->isToday()) {
                 $validated['status'] = MonthlyBill::STATUS_OVERDUE;
+            } else {
+                $validated['status'] = MonthlyBill::STATUS_PENDING;
             }
         }
 
@@ -213,6 +215,12 @@ class MonthlyBillController extends Controller
             ->findOrFail($id);
 
         $deleteAll = $request->boolean('delete_all_installments', false);
+        $deleteRecurring = $request->boolean('delete_recurring', false);
+
+        // Se pediu para excluir a assinatura junto
+        if ($deleteRecurring && $bill->recurring_bill_id) {
+            $bill->recurringBill()->delete();
+        }
 
         if ($deleteAll && $bill->isInstallment()) {
             // Deleta esta e todas as parcelas futuras do mesmo grupo

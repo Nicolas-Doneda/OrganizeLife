@@ -41,10 +41,7 @@ class StoreCategoryRequest extends FormRequest
             'color' => [
                 'sometimes',
                 'string',
-                Rule::in([
-                    'gray', 'red', 'orange', 'yellow', 'green',
-                    'teal', 'blue', 'indigo', 'purple', 'pink',
-                ]),
+                'max:30',
             ],
 
             //icon: opcional, máx 10 chars (emoji ou código de ícone)
@@ -54,7 +51,7 @@ class StoreCategoryRequest extends FormRequest
             'budget_group' => [
                 'required',
                 'string',
-                Rule::in(['needs', 'wants', 'savings']),
+                Rule::in(['needs', 'wants']),
             ],
         ];
     }
@@ -67,10 +64,10 @@ class StoreCategoryRequest extends FormRequest
             'name.required' => 'O nome da categoria é obrigatório.',
             'name.max' => 'O nome pode ter no máximo 60 caracteres.',
             'name.unique' => 'Você já tem uma categoria com esse nome.',
-            'color.in' => 'Cor inválida. Use: gray, red, orange, yellow, green, teal, blue, indigo, purple ou pink.',
+            'color.max' => 'Cor inválida (muito longa).',
             'icon.max' => 'O ícone pode ter no máximo 10 caracteres.',
             'budget_group.required' => 'O grupo de orçamento é obrigatório.',
-            'budget_group.in' => 'O grupo de orçamento deve ser: needs, wants ou savings.',
+            'budget_group.in' => 'O grupo de orçamento deve ser: needs ou wants.',
         ];
     }
 }

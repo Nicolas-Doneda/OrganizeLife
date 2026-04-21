@@ -26,10 +26,7 @@ class StoreWalletRequest extends FormRequest
             'color' => [
                 'sometimes',
                 'string',
-                Rule::in([
-                    'gray', 'red', 'orange', 'yellow', 'green',
-                    'teal', 'blue', 'indigo', 'purple', 'pink',
-                ]),
+                'max:30',
             ],
             'icon' => ['nullable', 'string', 'max:30'],
         ];
@@ -41,7 +38,7 @@ class StoreWalletRequest extends FormRequest
             'name.required' => 'O nome da carteira é obrigatório.',
             'name.max' => 'O nome pode ter no máximo 60 caracteres.',
             'name.unique' => 'Você já tem uma carteira com esse nome.',
-            'color.in' => 'Cor inválida.',
+            'color.max' => 'Cor inválida.',
         ];
     }
 }

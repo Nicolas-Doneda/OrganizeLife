@@ -4,13 +4,28 @@ import AppLayout from '../components/layouts/AppLayout';
 import api from '../services/api';
 import { Plus, CreditCard, Trash2, Pencil, Banknote, Landmark, DollarSign } from 'lucide-react';
 
-const COLORS = [
-    { name: 'gray', hex: '#6b7280' }, { name: 'red', hex: '#ef4444' },
-    { name: 'orange', hex: '#f97316' }, { name: 'yellow', hex: '#eab308' },
-    { name: 'green', hex: '#22c55e' }, { name: 'teal', hex: '#14b8a6' },
-    { name: 'blue', hex: '#3b82f6' }, { name: 'indigo', hex: '#6366f1' },
-    { name: 'purple', hex: '#a855f7' }, { name: 'pink', hex: '#ec4899' },
+const CURATED_COLORS = [
+    { name: 'gray', hex: 'var(--color-accent-400)' }, { name: 'red', hex: 'var(--color-danger-500)' },
+    { name: 'orange', hex: 'var(--color-warning-600)' }, { name: 'yellow', hex: 'var(--color-warning-500)' },
+    { name: 'green', hex: 'var(--color-success-500)' }, { name: 'teal', hex: 'var(--color-primary-400)' },
+    { name: 'blue', hex: 'var(--color-primary-500)' }, { name: 'indigo', hex: 'var(--color-primary-600)' },
+    { name: 'purple', hex: 'var(--color-accent-500)' }, { name: 'pink', hex: 'var(--color-danger-400)' },
 ];
+
+const BANK_COLORS = [
+    { name: 'nubank', hex: '#8A05BE', label: 'Nubank' },
+    { name: 'itau', hex: '#EC7000', label: 'Itaú' },
+    { name: 'inter', hex: '#FF7A00', label: 'Inter' },
+    { name: 'bradesco', hex: '#CC092F', label: 'Bradesco' },
+    { name: 'santander', hex: '#EC0000', label: 'Santander' },
+    { name: 'bb', hex: '#FCEE21', label: 'Banco do Brasil' },
+    { name: 'caixa', hex: '#005CA9', label: 'Caixa' },
+    { name: 'sicredi', hex: '#32A041', label: 'Sicredi' },
+    { name: 'mercadopago', hex: '#009EE3', label: 'Mercado Pago' },
+    { name: 'picpay', hex: '#11C76F', label: 'PicPay' },
+];
+
+const COLORS = [...CURATED_COLORS, ...BANK_COLORS];
 
 const ICONS = [
     { name: 'credit-card', label: 'Cartão', icon: CreditCard },
@@ -99,7 +114,7 @@ export default function WalletsPage() {
                                 {/* Top: Icon + Name */}
                                 <div className="mb-4 flex items-center gap-3">
                                     <div className="flex h-12 w-12 items-center justify-center rounded-xl shadow-sm"
-                                        style={{ backgroundColor: colorHex + '15', color: colorHex }}>
+                                        style={{ backgroundColor: `color-mix(in srgb, ${colorHex} 15%, transparent)`, color: colorHex }}>
                                         <IconComp size={24} strokeWidth={2} />
                                     </div>
                                     <div className="min-w-0 flex-1">
@@ -122,7 +137,7 @@ export default function WalletsPage() {
                                         <Pencil size={12} /> Editar
                                     </button>
                                     <button onClick={() => handleDelete(wallet)}
-                                        className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors hover:bg-red-50 dark:hover:bg-red-900/10"
+                                        className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all hover:bg-[var(--color-danger-50)] active:scale-95"
                                         style={{ color: 'var(--color-danger-500)' }}>
                                         <Trash2 size={12} /> Remover
                                     </button>
@@ -135,7 +150,7 @@ export default function WalletsPage() {
 
             {/* Create / Edit Modal */}
             {showModal && createPortal(
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={(e) => e.target === e.currentTarget && setShowModal(false)}>
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
                     <div className="w-full max-w-md rounded-2xl border p-6 max-h-[90vh] overflow-y-auto shadow-lg" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-primary)', boxShadow: 'var(--shadow-lg)' }}>
                         <h3 className="mb-5 text-lg font-bold tracking-tight" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading)' }}>
                             {editing ? 'Editar Carteira' : 'Nova Carteira'}
@@ -171,12 +186,21 @@ export default function WalletsPage() {
 
                             {/* Color */}
                             <div>
-                                <label className="mb-1.5 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Cor</label>
-                                <div className="flex flex-wrap gap-2">
-                                    {COLORS.map((c) => (
-                                        <button key={c.name} type="button" onClick={() => setForm({ ...form, color: c.name })}
+                                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-tertiary)' }}>Paleta Padrão</label>
+                                <div className="mb-4 flex flex-wrap gap-2">
+                                    {CURATED_COLORS.map((c) => (
+                                        <button key={c.name} type="button" onClick={() => setForm({ ...form, color: c.name })} title={c.name}
                                             className={`h-8 w-8 rounded-full border-2 transition-transform ${form.color === c.name ? 'scale-110' : ''}`}
                                             style={{ backgroundColor: c.hex, borderColor: form.color === c.name ? 'var(--text-primary)' : 'transparent' }} />
+                                    ))}
+                                </div>
+                                
+                                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-tertiary)' }}>Bancos Oficiais</label>
+                                <div className="flex flex-wrap gap-2">
+                                    {BANK_COLORS.map((c) => (
+                                        <button key={c.name} type="button" onClick={() => setForm({ ...form, color: c.name })} title={c.label}
+                                            className={`h-8 w-8 rounded-full border-2 transition-transform ${form.color === c.name ? 'scale-110' : ''}`}
+                                            style={{ backgroundColor: c.hex, borderColor: form.color === c.name ? 'var(--text-primary)' : 'transparent', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }} />
                                     ))}
                                 </div>
                             </div>
@@ -185,7 +209,7 @@ export default function WalletsPage() {
 
                             {/* Actions */}
                             <div className="flex justify-end gap-3 pt-2">
-                                <button type="button" onClick={() => setShowModal(false)} className="rounded-lg px-4 py-2.5 text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Cancelar</button>
+                                <button type="button" onClick={() => setShowModal(false)} className="rounded-lg px-4 py-2.5 text-sm font-medium transition-all hover:bg-[var(--bg-hover)] active:scale-95" style={{ color: 'var(--text-secondary)' }}>Cancelar</button>
                                 <button type="submit" className="btn-primary px-4 py-2.5">{editing ? 'Salvar' : 'Criar'}</button>
                             </div>
                         </form>

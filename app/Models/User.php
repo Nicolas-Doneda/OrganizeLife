@@ -21,6 +21,7 @@ class User extends Authenticatable implements MustVerifyEmail
     protected $fillable = [
         'name',
         'email',
+        'google_id',
         'password',
         'avatar',
         'theme_color',
@@ -103,6 +104,11 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(Wallet::class);
     }
 
+    public function savings()
+    {
+        return $this->hasMany(Saving::class);
+    }
+
     //MÉTODOS AUXILIARES (helpers)
 
     //EXPLICAÇÃO: Verifica se o usuário está suspenso
@@ -155,4 +161,8 @@ class User extends Authenticatable implements MustVerifyEmail
         return 'https://ui-avatars.com/api/?name=' . urlencode($this->name) . '&color=7F9CF5&background=EBF4FF';
     }
 
+    public function savingDeposits()
+    {
+        return $this->hasMany(SavingDeposit::class);
+    }
 }

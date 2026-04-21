@@ -40,7 +40,7 @@ export default function AuthLayout({ children }) {
                     <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl shadow-lg"
                         style={{
                             background: 'linear-gradient(135deg, var(--color-primary-600), var(--color-primary-700))',
-                            boxShadow: '0 8px 24px -4px rgba(6, 158, 143, 0.35)',
+                            boxShadow: '0 6px 18px -4px oklch(34% 0.090 149 / 0.28)',
                         }}
                     >
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

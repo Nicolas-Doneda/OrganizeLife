@@ -12,7 +12,8 @@ import {
     ChevronLeft,
     Menu,
     Home,
-    CreditCard
+    CreditCard,
+    PiggyBank
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -21,6 +22,7 @@ const navItems = [
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/incomes', label: 'Rendas', icon: Wallet },
     { to: '/bills', label: 'Contas', icon: Receipt },
+    { to: '/savings', label: 'Economias', icon: PiggyBank },
     { to: '/calendar', label: 'Calendário', icon: CalendarDays },
     { to: '/categories', label: 'Categorias', icon: Tag },
     { to: '/wallets', label: 'Carteiras', icon: CreditCard },
@@ -35,7 +37,7 @@ export default function Sidebar() {
 
     const sidebarWidth = collapsed ? 72 : 260;
 
-    const avatarColor = (user?.avatar && user.avatar.startsWith('#')) ? user.avatar : '#0bc4af';
+    const avatarColor = (user?.avatar && user.avatar.startsWith('#')) ? user.avatar : 'var(--color-primary-500)';
 
     async function handleLogout() {
         await logout();
@@ -81,7 +83,7 @@ export default function Sidebar() {
                                 className="flex h-9 w-9 items-center justify-center rounded-xl shadow-md"
                                 style={{
                                     background: 'linear-gradient(135deg, var(--color-primary-600), var(--color-primary-700))',
-                                    boxShadow: '0 4px 12px -2px rgba(6, 158, 143, 0.3)',
+                                    boxShadow: '0 3px 10px -2px oklch(34% 0.090 149 / 0.22)',
                                 }}
                             >
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -169,14 +171,14 @@ export default function Sidebar() {
                             )}
                             <div className="min-w-0">
                                 <p className="truncate text-[14px] font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>{user.name}</p>
-                                <p className="truncate text-[11px] font-medium tracking-wide uppercase" style={{ color: 'var(--text-tertiary)' }}>{user.email}</p>
+                                <p className="truncate text-[12px]" style={{ color: 'var(--text-tertiary)' }}>{user.email}</p>
                             </div>
                         </div>
                     )}
 
                     <button
                         onClick={handleLogout}
-                        className={`group flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-[14px] font-semibold tracking-tight transition-all duration-200 hover:bg-red-50 dark:hover:bg-red-900/10 ${collapsed ? 'justify-center' : ''}`}
+                        className={`group flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-[14px] font-semibold tracking-tight transition-all duration-200 hover:bg-[var(--color-danger-50)] active:scale-95 ${collapsed ? 'justify-center' : ''}`}
                         style={{ color: 'var(--color-danger-500)' }}
                     >
                         <LogOut size={20} strokeWidth={2} className="transition-transform duration-200 group-hover:scale-110" />

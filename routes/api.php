@@ -31,6 +31,10 @@ Route::middleware('throttle:5,1')->group(function () {
     //Se exigíssemos login, ele nunca conseguiria usar!
     Route::post('auth/forgot-password', [PasswordResetController::class, 'forgotPassword']);
     Route::post('auth/reset-password', [PasswordResetController::class, 'resetPassword']);
+
+    // Google Socialite endpoints
+    Route::get('/auth/google/url', [\App\Http\Controllers\Api\GoogleAuthController::class, 'getRedirectUrl']);
+    Route::get('/auth/google/callback', [\App\Http\Controllers\Api\GoogleAuthController::class, 'handleCallback']);
 });
 
 //============================================================
@@ -110,4 +114,9 @@ Route::middleware(['auth:sanctum', 'ability:*'])->group(function () {
 
     //CARTEIRAS (CRUD padrão)
     Route::apiResource('wallets', WalletController::class);
+
+    //ECONOMIAS (SAVINGS)
+    Route::apiResource('savings', \App\Http\Controllers\Api\SavingController::class);
+    Route::post('savings/{saving}/add-funds', [\App\Http\Controllers\Api\SavingController::class, 'addFunds']);
+    Route::get('savings/{saving}/deposits', [\App\Http\Controllers\Api\SavingController::class, 'deposits']);
 });

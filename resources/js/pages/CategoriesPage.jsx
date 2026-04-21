@@ -5,11 +5,14 @@ import api from '../services/api';
 import { Plus, Tag, Trash2, Pencil } from 'lucide-react';
 
 const COLORS = [
-    { name: 'gray', hex: '#6b7280' }, { name: 'red', hex: '#ef4444' },
-    { name: 'orange', hex: '#f97316' }, { name: 'yellow', hex: '#eab308' },
-    { name: 'green', hex: '#22c55e' }, { name: 'teal', hex: '#14b8a6' },
-    { name: 'blue', hex: '#3b82f6' }, { name: 'indigo', hex: '#6366f1' },
-    { name: 'purple', hex: '#a855f7' }, { name: 'pink', hex: '#ec4899' },
+    { name: 'gray', hex: 'var(--color-accent-400)' }, { name: 'red', hex: 'var(--color-danger-500)' },
+    { name: 'orange', hex: 'var(--color-warning-600)' }, { name: 'yellow', hex: 'var(--color-warning-500)' },
+    { name: 'green', hex: 'var(--color-success-500)' }, { name: 'teal', hex: 'var(--color-primary-400)' },
+    { name: 'blue', hex: 'var(--color-primary-500)' }, { name: 'indigo', hex: 'var(--color-primary-600)' },
+    { name: 'purple', hex: 'var(--color-accent-500)' }, { name: 'pink', hex: 'var(--color-danger-400)' },
+    { name: 'rose', hex: '#e11d48' }, { name: 'amber', hex: '#d97706' },
+    { name: 'emerald', hex: '#059669' }, { name: 'cyan', hex: '#0891b2' },
+    { name: 'sky', hex: '#0284c7' }, { name: 'violet', hex: '#7c3aed' },
 ];
 
 function getColorHex(name) {
@@ -73,17 +76,17 @@ export default function CategoriesPage() {
                         <div key={cat.id} className="rounded-2xl border p-5 transition-all duration-300 hover:-translate-y-1" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-primary)', boxShadow: 'var(--shadow-card)' }}>
                             <div className="mb-3 flex items-center gap-3">
                                 <div className="flex h-10 w-10 items-center justify-center rounded-lg"
-                                    style={{ backgroundColor: getColorHex(cat.color) + '20', color: getColorHex(cat.color) }}>
+                                    style={{ backgroundColor: `color-mix(in srgb, ${getColorHex(cat.color)} 20%, transparent)`, color: getColorHex(cat.color) }}>
                                     <Tag size={20} />
                                 </div>
                                 <div>
                                     <div className="flex items-center gap-2">
                                         <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{cat.name}</h3>
                                         <span className="rounded px-1.5 py-0.5 text-[10px] uppercase font-bold tracking-wider" style={{
-                                            backgroundColor: cat.budget_group === 'needs' ? 'var(--color-danger-50)' : cat.budget_group === 'wants' ? 'var(--color-warning-50)' : 'var(--color-success-50)',
-                                            color: cat.budget_group === 'needs' ? 'var(--color-danger-600)' : cat.budget_group === 'wants' ? 'var(--color-warning-600)' : 'var(--color-success-600)'
+                                            backgroundColor: cat.budget_group === 'needs' ? 'var(--color-danger-50)' : 'var(--color-warning-50)',
+                                            color: cat.budget_group === 'needs' ? 'var(--color-danger-600)' : 'var(--color-warning-600)'
                                         }}>
-                                            {cat.budget_group === 'needs' ? 'Essencial' : cat.budget_group === 'wants' ? 'Desejo' : 'Investimento'}
+                                            {cat.budget_group === 'needs' ? 'Essencial' : 'Desejo'}
                                         </span>
                                     </div>
                                     <p className="mt-0.5 text-xs" style={{ color: 'var(--text-tertiary)' }}>
@@ -96,7 +99,7 @@ export default function CategoriesPage() {
                                     className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors hover:bg-[var(--bg-hover)]" style={{ color: 'var(--text-secondary)' }}>
                                     <Pencil size={12} /> Editar
                                 </button>
-                                <button onClick={() => handleDelete(cat)} className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors hover:bg-red-50 dark:hover:bg-red-900/10" style={{ color: 'var(--color-danger-500)' }}>
+                                <button onClick={() => handleDelete(cat)} className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all hover:bg-[var(--color-danger-50)] active:scale-95" style={{ color: 'var(--color-danger-500)' }}>
                                     <Trash2 size={12} /> Remover
                                 </button>
                             </div>
@@ -118,7 +121,7 @@ export default function CategoriesPage() {
                             </div>
                             <div>
                                 <label className="mb-1.5 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Grupo de Orçamento</label>
-                                <div className="grid grid-cols-3 gap-2">
+                                <div className="grid grid-cols-2 gap-2">
                                     <button
                                         type="button"
                                         onClick={() => setForm({ ...form, budget_group: 'needs' })}
@@ -143,18 +146,6 @@ export default function CategoriesPage() {
                                     >
                                         DESEJOS
                                     </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setForm({ ...form, budget_group: 'savings' })}
-                                        className={`rounded-lg border px-3 py-2 text-xs font-semibold tracking-wide transition-all ${form.budget_group === 'savings' ? 'ring-2 ring-success-500' : ''}`}
-                                        style={{
-                                            backgroundColor: form.budget_group === 'savings' ? 'var(--color-success-50)' : 'var(--bg-card)',
-                                            borderColor: form.budget_group === 'savings' ? 'var(--color-success-200)' : 'var(--border-primary)',
-                                            color: form.budget_group === 'savings' ? 'var(--color-success-600)' : 'var(--text-secondary)',
-                                        }}
-                                    >
-                                        INVESTIMENTOS
-                                    </button>
                                 </div>
                                 <p className="mt-1.5 text-[11px]" style={{ color: 'var(--text-tertiary)' }}>
                                     Isso ajuda o Dashboard a calcular até onde você gastou dentro da regra 50/30/20.
@@ -171,7 +162,7 @@ export default function CategoriesPage() {
                                 </div>
                             </div>
                             <div className="flex justify-end gap-3 pt-2">
-                                <button type="button" onClick={() => setShowModal(false)} className="rounded-lg px-4 py-2.5 text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Cancelar</button>
+                                <button type="button" onClick={() => setShowModal(false)} className="rounded-lg px-4 py-2.5 text-sm font-medium transition-all hover:bg-[var(--bg-hover)] active:scale-95" style={{ color: 'var(--text-secondary)' }}>Cancelar</button>
                                 <button type="submit" className="btn-primary px-4 py-2.5">{editing ? 'Salvar' : 'Criar'}</button>
                             </div>
                         </form>

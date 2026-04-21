@@ -20,7 +20,13 @@ export default defineConfig({
         },
     },
     server: {
+        host: '127.0.0.1', // Força o IPv4 para evitar conflito com [::1] (tela branca)
+        port: 5173,
+        strictPort: true,
         cors: true,
+        hmr: {
+            host: 'localhost',
+        },
         watch: {
             ignored: ['**/storage/framework/views/**'],
         },

@@ -30,14 +30,15 @@ O projeto foi construído com uma arquitetura **SPA (Single Page Application)**:
 
 | Módulo | O que você pode fazer |
 |---|---|
-| 🏠 **Dashboard** | Visão geral das finanças: saldo, receitas, despesas e gráficos |
+| 🏠 **Dashboard** | Visão geral das finanças com regra **50/30/20** automática e progresso de metas em tempo real |
+| 📦 **Economias** | Crie "Caixinhas" para metas específicas, acompanhe o histórico de depósitos e o total acumulado |
 | 💰 **Receitas** | Cadastre entradas de dinheiro e marque-as como recebidas |
-| 📄 **Contas** | Gerencie contas mensais e contas recorrentes com controle de status |
+| 📄 **Contas** | Gerencie contas mensais e recorrentes com proteção contra dupla contagem e cancelamento inteligente |
 | 📅 **Calendário** | Visualize eventos, contas e receitas em uma agenda mensal |
-| 🏷️ **Categorias** | Crie categorias personalizadas para organizar suas despesas |
+| 🏷️ **Categorias** | Organize gastos em grupos Essenciais ou Desejos para alimentar o Orçamento Inteligente |
 | 👛 **Carteiras** | Organize seu dinheiro em carteiras separadas com limite simbólico |
-| 👤 **Perfil** | Gerencie seus dados, senha e autenticação de dois fatores (2FA) |
-| 🌗 **Tema** | Alterne entre visual claro e escuro com um clique |
+| 👤 **Perfil** | Gerencie seus dados, avatar (cor/imagem), tema e autenticação de dois fatores (2FA) |
+| 🌗 **Tema** | Alterne entre visual claro, escuro ou esmeralda com um clique |
 
 ---
 
@@ -122,6 +123,8 @@ OrganizeLife/
 │       ├── RecurringBill.php
 │       ├── Wallet.php
 │       ├── Category.php
+│       ├── Saving.php
+│       ├── SavingDeposit.php
 │       └── Event.php
 ├── resources/
 │   └── js/
