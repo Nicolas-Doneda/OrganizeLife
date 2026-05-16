@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import AppLayout from '../components/layouts/AppLayout';
 import api from '../services/api';
+import useSubmitGuard, { useActionGuard } from '../hooks/useSubmitGuard';
 import { Plus, PiggyBank, Pencil, Trash2, TrendingUp, ChevronDown, ChevronUp, Clock } from 'lucide-react';
 import CurrencyInput from '../components/ui/CurrencyInput';
 
@@ -30,6 +31,9 @@ export default function SavingsPage() {
     const [fundsAmount, setFundsAmount] = useState('');
     const [expandedDeposits, setExpandedDeposits] = useState({});
     const [depositsData, setDepositsData] = useState({});
+    const { isSubmitting, guard } = useSubmitGuard();
+    const { isSubmitting: isDepositing, guard: guardDeposit } = useSubmitGuard();
+    const { isActionInProgress, guardAction } = useActionGuard();
 
     useEffect(() => { fetchSavings(); }, []);
 
@@ -44,25 +48,31 @@ export default function SavingsPage() {
 
     async function handleSubmit(e) {
         e.preventDefault();
-        try {
-            const payload = { ...form, target_amount: form.target_amount || null };
-            if (editing) { await api.put(`/savings/${editing.id}`, payload); }
-            else { await api.post('/savings', payload); }
-            closeModal(); fetchSavings();
-        } catch (err) { console.error('Erro:', err); }
+        await guard(async () => {
+            try {
+                const payload = { ...form, target_amount: form.target_amount || null };
+                if (editing) { await api.put(`/savings/${editing.id}`, payload); }
+                else { await api.post('/savings', payload); }
+                closeModal(); fetchSavings();
+            } catch (err) { console.error('Erro:', err); }
+        });
     }
 
     async function handleAddFunds(e) {
         e.preventDefault();
-        try {
-            await api.post(`/savings/${editing.id}/add-funds`, { amount: fundsAmount });
-            closeModal(); fetchSavings();
-        } catch (err) { console.error('Erro:', err); }
+        await guardDeposit(async () => {
+            try {
+                await api.post(`/savings/${editing.id}/add-funds`, { amount: fundsAmount });
+                closeModal(); fetchSavings();
+            } catch (err) { console.error('Erro:', err); }
+        });
     }
 
     async function handleDelete(sv) {
         if (!confirm(`Deseja mesmo remover a reserva "${sv.name}"?`)) return;
-        try { await api.delete(`/savings/${sv.id}`); fetchSavings(); } catch (err) { console.error('Erro:', err); }
+        await guardAction(sv.id, async () => {
+            try { await api.delete(`/savings/${sv.id}`); fetchSavings(); } catch (err) { console.error('Erro:', err); }
+        });
     }
 
     function openCreate() {
@@ -195,8 +205,8 @@ export default function SavingsPage() {
                                     <button onClick={() => openEdit(sv)} className="flex flex-1 justify-center items-center gap-1.5 rounded-lg py-2 text-xs font-medium hover:bg-[var(--bg-hover)]" style={{ color: 'var(--text-secondary)' }}>
                                         <Pencil size={14} /> Editar
                                     </button>
-                                    <button onClick={() => handleDelete(sv)} className="flex flex-1 justify-center items-center gap-1.5 rounded-lg py-2 text-xs font-medium transition-all hover:bg-[var(--color-danger-50)] active:scale-95" style={{ color: 'var(--color-danger-500)' }}>
-                                        <Trash2 size={14} /> Excluir
+                                    <button onClick={() => handleDelete(sv)} disabled={isActionInProgress(sv.id)} className="flex flex-1 justify-center items-center gap-1.5 rounded-lg py-2 text-xs font-medium transition-all hover:bg-[var(--color-danger-50)] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed" style={{ color: 'var(--color-danger-500)' }}>
+                                        <Trash2 size={14} /> {isActionInProgress(sv.id) ? 'Excluindo...' : 'Excluir'}
                                     </button>
                                 </div>
 
@@ -258,7 +268,9 @@ export default function SavingsPage() {
                             </div>
                             <div className="flex justify-end gap-3 pt-4">
                                 <button type="button" onClick={closeModal} className="rounded-lg px-4 py-2.5 text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]">Cancelar</button>
-                                <button type="submit" className="btn-primary px-4 py-2.5">{editing ? 'Salvar' : 'Criar'}</button>
+                                <button type="submit" disabled={isSubmitting} className="btn-primary px-4 py-2.5 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    {isSubmitting ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" /> : (editing ? 'Salvar' : 'Criar')}
+                                </button>
                             </div>
                         </form>
                     </div>
@@ -279,7 +291,9 @@ export default function SavingsPage() {
                             </div>
                             <div className="flex justify-end gap-3 pt-2">
                                 <button type="button" onClick={closeModal} className="rounded-lg px-4 py-2.5 text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]">Cancelar</button>
-                                <button type="submit" className="btn-primary px-4 py-2.5 bg-success-600 hover:bg-success-700">Confirmar</button>
+                                <button type="submit" disabled={isDepositing} className="btn-primary px-4 py-2.5 bg-success-600 hover:bg-success-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    {isDepositing ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" /> : 'Confirmar'}
+                                </button>
                             </div>
                         </form>
                     </div>

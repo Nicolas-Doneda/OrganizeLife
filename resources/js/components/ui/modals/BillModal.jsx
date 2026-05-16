@@ -14,7 +14,8 @@ export default function BillModal({
     bill = null,          // if editing
     categories = [],
     wallets = [],
-    lockedType = null     // 'monthly', 'recurring' or null (general hub)
+    lockedType = null,    // 'monthly', 'recurring' or null (general hub)
+    submitting = false,   // controlled by parent's useSubmitGuard
 }) {
     // Mode states
     const [isRecurring, setIsRecurring] = useState(lockedType === 'recurring');
@@ -248,8 +249,8 @@ export default function BillModal({
                     {/* Actions */}
                     <div className="flex justify-end gap-3 pt-2">
                         <button type="button" onClick={onClose} className="rounded-lg px-4 py-2.5 text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Cancelar</button>
-                        <button type="submit" className="btn-primary px-4 py-2.5">
-                            {bill ? 'Salvar' : 'Criar Conta'}
+                        <button type="submit" disabled={submitting} className="btn-primary px-4 py-2.5 disabled:opacity-50 disabled:cursor-not-allowed">
+                            {submitting ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" /> : (bill ? 'Salvar' : 'Criar Conta')}
                         </button>
                     </div>
                 </form>

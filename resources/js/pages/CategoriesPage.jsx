@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import AppLayout from '../components/layouts/AppLayout';
 import api from '../services/api';
+import useSubmitGuard, { useActionGuard } from '../hooks/useSubmitGuard';
 import { Plus, Tag, Trash2, Pencil } from 'lucide-react';
 
 const COLORS = [
@@ -25,6 +26,8 @@ export default function CategoriesPage() {
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState(null);
     const [form, setForm] = useState({ name: '', color: 'blue', icon: '', budget_group: 'needs' });
+    const { isSubmitting, guard } = useSubmitGuard();
+    const { isActionInProgress, guardAction } = useActionGuard();
 
     useEffect(() => { fetch(); }, []);
 
@@ -36,16 +39,20 @@ export default function CategoriesPage() {
 
     async function handleSubmit(e) {
         e.preventDefault();
-        try {
-            if (editing) { await api.put(`/categories/${editing.id}`, form); }
-            else { await api.post('/categories', form); }
-            setShowModal(false); setEditing(null); setForm({ name: '', color: 'blue', icon: '', budget_group: 'needs' }); fetch();
-        } catch (err) { console.error('Erro:', err); }
+        await guard(async () => {
+            try {
+                if (editing) { await api.put(`/categories/${editing.id}`, form); }
+                else { await api.post('/categories', form); }
+                setShowModal(false); setEditing(null); setForm({ name: '', color: 'blue', icon: '', budget_group: 'needs' }); fetch();
+            } catch (err) { console.error('Erro:', err); }
+        });
     }
 
     async function handleDelete(cat) {
         if (!confirm(`Remover a categoria "${cat.name}"?`)) return;
-        try { await api.delete(`/categories/${cat.id}`); fetch(); } catch (err) { console.error('Erro:', err); }
+        await guardAction(cat.id, async () => {
+            try { await api.delete(`/categories/${cat.id}`); fetch(); } catch (err) { console.error('Erro:', err); }
+        });
     }
 
     return (
@@ -99,8 +106,8 @@ export default function CategoriesPage() {
                                     className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors hover:bg-[var(--bg-hover)]" style={{ color: 'var(--text-secondary)' }}>
                                     <Pencil size={12} /> Editar
                                 </button>
-                                <button onClick={() => handleDelete(cat)} className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all hover:bg-[var(--color-danger-50)] active:scale-95" style={{ color: 'var(--color-danger-500)' }}>
-                                    <Trash2 size={12} /> Remover
+                                <button onClick={() => handleDelete(cat)} disabled={isActionInProgress(cat.id)} className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all hover:bg-[var(--color-danger-50)] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed" style={{ color: 'var(--color-danger-500)' }}>
+                                    <Trash2 size={12} /> {isActionInProgress(cat.id) ? 'Removendo...' : 'Remover'}
                                 </button>
                             </div>
                         </div>
@@ -163,7 +170,9 @@ export default function CategoriesPage() {
                             </div>
                             <div className="flex justify-end gap-3 pt-2">
                                 <button type="button" onClick={() => setShowModal(false)} className="rounded-lg px-4 py-2.5 text-sm font-medium transition-all hover:bg-[var(--bg-hover)] active:scale-95" style={{ color: 'var(--text-secondary)' }}>Cancelar</button>
-                                <button type="submit" className="btn-primary px-4 py-2.5">{editing ? 'Salvar' : 'Criar'}</button>
+                                <button type="submit" disabled={isSubmitting} className="btn-primary px-4 py-2.5 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    {isSubmitting ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" /> : (editing ? 'Salvar' : 'Criar')}
+                                </button>
                             </div>
                         </form>
                     </div>

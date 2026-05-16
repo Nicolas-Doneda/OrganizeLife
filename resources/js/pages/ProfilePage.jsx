@@ -34,18 +34,25 @@ export default function ProfilePage() {
     const fileInputRef = useRef(null);
     const [twoFaData, setTwoFaData] = useState(null);
     const [twoFaCode, setTwoFaCode] = useState('');
+    const [twoFaLoading, setTwoFaLoading] = useState(false);
 
     async function handleEnable2FA() {
+        if (twoFaLoading) return;
+        setTwoFaLoading(true);
         try {
             setError('');
             const res = await api.post('/auth/2fa/enable');
             setTwoFaData(res.data.data);
         } catch (err) {
             setError(err.response?.data?.message || 'Erro ao ativar 2FA.');
+        } finally {
+            setTwoFaLoading(false);
         }
     }
 
     async function handleConfirm2FA() {
+        if (twoFaLoading) return;
+        setTwoFaLoading(true);
         try {
             setError('');
             await api.post('/auth/2fa/confirm', { code: twoFaCode });
@@ -54,18 +61,24 @@ export default function ProfilePage() {
             await fetchUser();
         } catch (err) {
             setError(err.response?.data?.message || 'Codigo invalido.');
+        } finally {
+            setTwoFaLoading(false);
         }
     }
 
     async function handleDisable2FA() {
         const password = prompt('Digite sua senha para desativar o 2FA:');
         if (!password) return;
+        if (twoFaLoading) return;
+        setTwoFaLoading(true);
         try {
             setError('');
             await api.delete('/auth/2fa/disable', { data: { password } });
             await fetchUser();
         } catch (err) {
             setError(err.response?.data?.message || 'Senha incorreta.');
+        } finally {
+            setTwoFaLoading(false);
         }
     }
 
@@ -309,9 +322,9 @@ export default function ProfilePage() {
                                 <button
                                     type="button"
                                     onClick={handleEnable2FA}
-                                    disabled={saving}
-                                    className="btn-primary px-4 py-2">
-                                    Ativar 2FA
+                                    disabled={saving || twoFaLoading}
+                                    className="btn-primary px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    {twoFaLoading ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" /> : 'Ativar 2FA'}
                                 </button>
                             </div>
                         )}
@@ -359,9 +372,9 @@ export default function ProfilePage() {
                                             className="focus-ring w-32 rounded-lg border px-4 py-2.5 text-sm text-center font-mono tracking-widest outline-none"
                                             style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-primary)', color: 'var(--text-primary)' }}
                                         />
-                                        <button type="button" onClick={handleConfirm2FA} disabled={twoFaCode.length !== 6}
-                                            className="rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50">
-                                            Confirmar
+                                        <button type="button" onClick={handleConfirm2FA} disabled={twoFaCode.length !== 6 || twoFaLoading}
+                                            className="rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                                            {twoFaLoading ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" /> : 'Confirmar'}
                                         </button>
                                     </div>
                                 </div>
@@ -392,10 +405,11 @@ export default function ProfilePage() {
                                 <button
                                     type="button"
                                     onClick={handleDisable2FA}
-                                    className="rounded-lg border px-4 py-2 text-sm font-medium transition-colors hover:bg-red-50"
+                                    disabled={twoFaLoading}
+                                    className="rounded-lg border px-4 py-2 text-sm font-medium transition-colors hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
                                     style={{ borderColor: 'var(--color-danger-300)', color: 'var(--color-danger-500)' }}
                                 >
-                                    Desativar
+                                    {twoFaLoading ? 'Desativando...' : 'Desativar'}
                                 </button>
                             </div>
                         )}

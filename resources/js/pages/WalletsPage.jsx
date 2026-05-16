@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import AppLayout from '../components/layouts/AppLayout';
 import api from '../services/api';
+import useSubmitGuard, { useActionGuard } from '../hooks/useSubmitGuard';
 import { Plus, CreditCard, Trash2, Pencil, Banknote, Landmark, DollarSign } from 'lucide-react';
 
 const CURATED_COLORS = [
@@ -52,6 +53,8 @@ export default function WalletsPage() {
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState(null);
     const [form, setForm] = useState({ name: '', color: 'purple', icon: 'credit-card' });
+    const { isSubmitting, guard } = useSubmitGuard();
+    const { isActionInProgress, guardAction } = useActionGuard();
 
     useEffect(() => { fetchWallets(); }, []);
 
@@ -63,17 +66,21 @@ export default function WalletsPage() {
 
     async function handleSubmit(e) {
         e.preventDefault();
-        try {
-            const payload = { ...form };
-            if (editing) { await api.put(`/wallets/${editing.id}`, payload); }
-            else { await api.post('/wallets', payload); }
-            setShowModal(false); setEditing(null); setForm({ name: '', color: 'purple', icon: 'credit-card' }); fetchWallets();
-        } catch (err) { console.error('Erro:', err); }
+        await guard(async () => {
+            try {
+                const payload = { ...form };
+                if (editing) { await api.put(`/wallets/${editing.id}`, payload); }
+                else { await api.post('/wallets', payload); }
+                setShowModal(false); setEditing(null); setForm({ name: '', color: 'purple', icon: 'credit-card' }); fetchWallets();
+            } catch (err) { console.error('Erro:', err); }
+        });
     }
 
     async function handleDelete(wallet) {
         if (!confirm(`Remover a carteira "${wallet.name}"? As contas vinculadas não serão removidas.`)) return;
-        try { await api.delete(`/wallets/${wallet.id}`); fetchWallets(); } catch (err) { console.error('Erro:', err); }
+        await guardAction(wallet.id, async () => {
+            try { await api.delete(`/wallets/${wallet.id}`); fetchWallets(); } catch (err) { console.error('Erro:', err); }
+        });
     }
 
     return (
@@ -137,9 +144,10 @@ export default function WalletsPage() {
                                         <Pencil size={12} /> Editar
                                     </button>
                                     <button onClick={() => handleDelete(wallet)}
-                                        className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all hover:bg-[var(--color-danger-50)] active:scale-95"
+                                        disabled={isActionInProgress(wallet.id)}
+                                        className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all hover:bg-[var(--color-danger-50)] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                                         style={{ color: 'var(--color-danger-500)' }}>
-                                        <Trash2 size={12} /> Remover
+                                        <Trash2 size={12} /> {isActionInProgress(wallet.id) ? 'Removendo...' : 'Remover'}
                                     </button>
                                 </div>
                             </div>
@@ -210,7 +218,9 @@ export default function WalletsPage() {
                             {/* Actions */}
                             <div className="flex justify-end gap-3 pt-2">
                                 <button type="button" onClick={() => setShowModal(false)} className="rounded-lg px-4 py-2.5 text-sm font-medium transition-all hover:bg-[var(--bg-hover)] active:scale-95" style={{ color: 'var(--text-secondary)' }}>Cancelar</button>
-                                <button type="submit" className="btn-primary px-4 py-2.5">{editing ? 'Salvar' : 'Criar'}</button>
+                                <button type="submit" disabled={isSubmitting} className="btn-primary px-4 py-2.5 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    {isSubmitting ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" /> : (editing ? 'Salvar' : 'Criar')}
+                                </button>
                             </div>
                         </form>
                     </div>

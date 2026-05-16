@@ -1,11 +1,11 @@
 <h1 align="center">
   <br>
-  📋 OrganizeLife
+  OrganizeLife
   <br>
 </h1>
 
 <p align="center">
-  <strong>Sua vida financeira e sua agenda, organizadas em um só lugar.</strong>
+  <strong>Sua vida financeira e sua agenda, organizadas em um so lugar.</strong>
 </p>
 
 <p align="center">
@@ -18,63 +18,69 @@
 
 ---
 
-## 📖 Sobre o Projeto
+## Sobre o Projeto
 
-**OrganizeLife** é uma aplicação web de gerenciamento pessoal focada em finanças e eventos. Com ela, você centraliza o controle das suas entradas, gastos, contas a pagar e compromissos em uma interface limpa e intuitiva, com suporte a tema claro e escuro.
+**OrganizeLife** e uma aplicacao web de gerenciamento pessoal focada em financas e eventos. Com ela, voce centraliza o controle das suas entradas, gastos, contas a pagar e compromissos em uma interface limpa e intuitiva, com suporte a tema claro e escuro.
 
-O projeto foi construído com uma arquitetura **SPA (Single Page Application)**: o backend em **Laravel** expõe uma API RESTful, e o frontend em **React** consome essa API para oferecer uma experiência fluida sem recarregamentos de página.
+O projeto foi construido com uma arquitetura **SPA (Single Page Application)**: o backend em **Laravel** expoe uma API RESTful, e o frontend em **React** consome essa API para oferecer uma experiencia fluida sem recarregamentos de pagina.
 
 ---
 
-## ✨ Funcionalidades
+## Funcionalidades
 
-| Módulo | O que você pode fazer |
+| Modulo | Descricao |
 |---|---|
-| 🏠 **Dashboard** | Visão geral das finanças com regra **50/30/20** automática e progresso de metas em tempo real |
-| 📦 **Economias** | Crie "Caixinhas" para metas específicas, acompanhe o histórico de depósitos e o total acumulado |
-| 💰 **Receitas** | Cadastre entradas de dinheiro e marque-as como recebidas |
-| 📄 **Contas** | Gerencie contas mensais e recorrentes com proteção contra dupla contagem e cancelamento inteligente |
-| 📅 **Calendário** | Visualize eventos, contas e receitas em uma agenda mensal |
-| 🏷️ **Categorias** | Organize gastos em grupos Essenciais ou Desejos para alimentar o Orçamento Inteligente |
-| 👛 **Carteiras** | Organize seu dinheiro em carteiras separadas com limite simbólico |
-| 👤 **Perfil** | Gerencie seus dados, avatar (cor/imagem), tema e autenticação de dois fatores (2FA) |
-| 🌗 **Tema** | Alterne entre visual claro, escuro ou esmeralda com um clique |
+| **Dashboard** | Visao geral das financas com regra 50/30/20 automatica e progresso de metas em tempo real |
+| **Economias** | Crie "Caixinhas" para metas especificas, acompanhe o historico de depositos e o total acumulado |
+| **Receitas** | Cadastre entradas de dinheiro e marque-as como recebidas |
+| **Contas** | Gerencie contas mensais e recorrentes com protecao contra dupla contagem e cancelamento inteligente |
+| **Calendario** | Visualize eventos, contas e receitas em uma agenda mensal |
+| **Categorias** | Organize gastos em grupos Essenciais ou Desejos para alimentar o Orcamento Inteligente |
+| **Carteiras** | Organize seu dinheiro em carteiras separadas com limite simbolico |
+| **Perfil** | Gerencie seus dados, avatar (cor/imagem), tema e autenticacao de dois fatores (2FA) |
+| **Tema** | Alterne entre visual claro, escuro ou esmeralda com um clique |
 
 ---
 
-## 🛠️ Stack Tecnológica
+## Stack Tecnologica
 
 ### Backend
-- **[Laravel 12](https://laravel.com/)** — Framework PHP para a API RESTful e autenticação
+- **[Laravel 12](https://laravel.com/)** — Framework PHP para a API RESTful e autenticacao
 - **MySQL / SQLite** — Banco de dados relacional
-- **Laravel Sanctum** — Autenticação stateful via cookies para SPAs
-- **2FA por TOTP** — Autenticação de dois fatores compatível com Google Authenticator
+- **Laravel Sanctum** — Autenticacao stateful via cookies para SPAs
+- **2FA por TOTP** — Autenticacao de dois fatores compativel com Google Authenticator
 
 ### Frontend
 - **[React 19](https://react.dev/)** — Interface reativa baseada em componentes
-- **[React Router DOM 7](https://reactrouter.com/)** — Navegação client-side
-- **[Recharts](https://recharts.org/)** — Gráficos e visualizações financeiras
-- **[Lucide React](https://lucide.dev/)** — Ícones modernos e consistentes
-- **[TailwindCSS 4](https://tailwindcss.com/)** — Estilização utilitária
-- **[Vite 7](https://vite.dev/)** — Bundler ultrarrápido com HMR
+- **[React Router DOM 7](https://reactrouter.com/)** — Navegacao client-side
+- **[Recharts](https://recharts.org/)** — Graficos e visualizacoes financeiras
+- **[Lucide React](https://lucide.dev/)** — Icones modernos e consistentes
+- **[TailwindCSS 4](https://tailwindcss.com/)** — Estilizacao utilitaria
+- **[Vite 7](https://vite.dev/)** — Bundler ultrarrapido com HMR
+
+### Design
+- **OKLCH Color System** — Paleta Emerald Forest com chroma contido
+- **WebGL Generative Shaders** — Background aurora reativo ao cursor (zero dependencias)
+- **Scroll-Driven Animations** — Parallax cinematografico com fallback progressivo
+- **CSS Custom Properties** — Design tokens para temas dinamicos
 
 ---
 
-## 🚀 Como Rodar Localmente
+## Como Rodar Localmente
 
-### Pré-requisitos
+### Pre-requisitos
 - PHP >= 8.2
 - Composer
 - Node.js >= 18
 - MySQL ou SQLite
 
-### 1. Clone o repositório
+### 1. Clone o repositorio
 ```bash
 git clone https://github.com/Nicolas-Doneda/OrganizeLife.git
 cd OrganizeLife
 ```
 
-### 2. Instale as dependências
+### 2. Instale as dependencias
 ```bash
 composer install
 npm install
@@ -104,18 +110,18 @@ php artisan serve
 npm run dev
 ```
 
-Acesse a aplicação em **http://localhost:8000**.
+Acesse a aplicacao em **http://localhost:8000**.
 
 ---
 
-## 🗂️ Estrutura do Projeto
+## Estrutura do Projeto
 
 ```
 OrganizeLife/
 ├── app/
 │   ├── Http/
 │   │   ├── Controllers/Api/   # Controllers da API REST
-│   │   └── Requests/          # Form Requests com validação
+│   │   └── Requests/          # Form Requests com validacao
 │   └── Models/                # Modelos Eloquent
 │       ├── User.php
 │       ├── Income.php
@@ -129,10 +135,14 @@ OrganizeLife/
 ├── resources/
 │   └── js/
 │       ├── app.jsx            # Ponto de entrada React + rotas
-│       ├── pages/             # Páginas da aplicação
-│       ├── components/        # Componentes reutilizáveis
+│       ├── pages/             # Paginas da aplicacao
+│       ├── components/        # Componentes reutilizaveis
+│       │   ├── landing/       # AuroraCanvas, MagneticButton
+│       │   ├── layouts/       # Layout principal
+│       │   └── ui/            # Modais, sidebars, widgets
 │       ├── contexts/          # Context API (Auth, Theme)
-│       └── services/          # Chamadas à API
+│       ├── hooks/             # useSubmitGuard, useActionGuard
+│       └── services/          # Chamadas a API com protecao anti-duplicate
 ├── routes/
 │   └── api.php                # Rotas da API
 └── database/
@@ -141,8 +151,18 @@ OrganizeLife/
 
 ---
 
-## 🔐 Autenticação
+## Seguranca
 
-A autenticação é gerenciada pelo **Laravel Sanctum** com sessões stateful, o que garante segurança sem a necessidade de armazenar tokens no `localStorage`. O sistema também suporta **autenticação de dois fatores (2FA)** via aplicativos como Google Authenticator ou Authy.
+### Autenticacao
+A autenticacao e gerenciada pelo **Laravel Sanctum** com sessoes stateful, garantindo seguranca sem armazenar tokens no `localStorage`. O sistema suporta **autenticacao de dois fatores (2FA)** via aplicativos como Google Authenticator ou Authy.
 
+### Protecao contra Requisicoes Duplicadas
+O sistema implementa protecao em duas camadas:
+- **Interceptor Axios** — Debounce global de 800ms para requisicoes mutantes (POST, PUT, PATCH, DELETE)
+- **Hooks de UI** — `useSubmitGuard` e `useActionGuard` bloqueiam submissoes concorrentes no nivel do componente
 
+---
+
+## Licenca
+
+Distribuido sob a licenca MIT.

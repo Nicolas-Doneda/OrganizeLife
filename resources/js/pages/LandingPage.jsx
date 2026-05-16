@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import AuroraCanvas from '../components/landing/AuroraCanvas';
+import MagneticButton from '../components/landing/MagneticButton';
 import {
     CalendarDays, PiggyBank, LayoutDashboard,
     ArrowRight, CheckCircle2, Moon, Sun,
@@ -28,39 +30,103 @@ function useScrollReveal(threshold = 0.12) {
     return [ref, visible];
 }
 
-/* ─── AnimatedNumber ─── */
-function AnimatedNumber({ target, suffix = '' }) {
+/* ─── AnimatedNumber — dramatic entrance with scale + blur ─── */
+function AnimatedNumber({ target, suffix = '', delay = 0 }) {
     const [value, setValue] = useState(0);
     const [ref, visible] = useScrollReveal(0.3);
+    const [entered, setEntered] = useState(false);
     useEffect(() => {
         if (!visible) return;
-        let start; const dur = 1200;
+        const timer = setTimeout(() => setEntered(true), delay);
+        let start; const dur = 1400;
         const tick = (t) => {
             if (!start) start = t;
             const p = Math.min((t - start) / dur, 1);
             setValue(Math.floor((1 - Math.pow(1 - p, 4)) * target));
             if (p < 1) requestAnimationFrame(tick);
         };
-        requestAnimationFrame(tick);
-    }, [visible, target]);
-    return <span ref={ref}>{value}{suffix}</span>;
+        setTimeout(() => requestAnimationFrame(tick), delay);
+        return () => clearTimeout(timer);
+    }, [visible, target, delay]);
+    return (
+        <span ref={ref} style={{
+            display: 'inline-block',
+            transform: entered ? 'scale(1) translateY(0)' : 'scale(1.5) translateY(16px)',
+            filter: entered ? 'blur(0)' : 'blur(8px)',
+            opacity: entered ? 1 : 0,
+            transition: `transform 0.8s ${EASE_EXPO}, filter 0.8s ${EASE_EXPO}, opacity 0.6s ${EASE_EXPO}`,
+        }}>{value}{suffix}</span>
+    );
 }
 
-/* ─── CursorSpotlight ─── */
-function CursorSpotlight() {
-    const ref = useRef(null);
+/* ─── WordReveal — staggered word-by-word text reveal ─── */
+function WordReveal({ text, startDelay = 0, wordDelay = 80, style = {}, className = '' }) {
+    const [ref, visible] = useScrollReveal(0.2);
+    const words = text.split(' ');
+    return (
+        <span ref={ref} className={className} style={style}>
+            {words.map((word, i) => (
+                <span key={i} style={{
+                    display: 'inline-block', marginRight: '0.28em',
+                    opacity: visible ? 1 : 0,
+                    transform: visible ? 'translateY(0) rotateX(0)' : 'translateY(100%) rotateX(-80deg)',
+                    filter: visible ? 'blur(0)' : 'blur(4px)',
+                    transition: `all 0.6s ${startDelay + i * wordDelay}ms ${EASE_EXPO}`,
+                    transformOrigin: 'bottom center',
+                }}>{word}</span>
+            ))}
+        </span>
+    );
+}
+
+/* ─── TypeWriter — typing effect for subtitle ─── */
+function TypeWriter({ text, speed = 25, startDelay = 600, style = {} }) {
+    const [displayed, setDisplayed] = useState('');
+    const [started, setStarted] = useState(false);
+    const [ref, visible] = useScrollReveal(0.2);
     useEffect(() => {
-        const el = ref.current;
-        if (!el) return;
-        const move = (e) => {
-            const rect = el.getBoundingClientRect();
-            el.style.setProperty('--cx', `${e.clientX - rect.left}px`);
-            el.style.setProperty('--cy', `${e.clientY - rect.top}px`);
+        if (!visible || started) return;
+        const timer = setTimeout(() => {
+            setStarted(true);
+            let i = 0;
+            const interval = setInterval(() => {
+                i++;
+                setDisplayed(text.slice(0, i));
+                if (i >= text.length) clearInterval(interval);
+            }, speed);
+            return () => clearInterval(interval);
+        }, startDelay);
+        return () => clearTimeout(timer);
+    }, [visible, text, speed, startDelay, started]);
+    return (
+        <span ref={ref} style={style}>
+            {displayed}
+            {started && displayed.length < text.length && (
+                <span style={{ display: 'inline-block', width: 2, height: '1em', backgroundColor: 'var(--color-primary-500)', marginLeft: 2, animation: 'pulse 0.8s ease infinite', verticalAlign: 'text-bottom' }} />
+            )}
+        </span>
+    );
+}
+
+/* ─── smoothScrollTo — cinematic smooth scroll ─── */
+function smoothScrollTo(targetId) {
+    const el = document.getElementById(targetId);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/* ─── useScrollProgress — tracks scroll position for parallax ─── */
+function useScrollProgress() {
+    const [progress, setProgress] = useState(0);
+    useEffect(() => {
+        const onScroll = () => {
+            const p = Math.min(window.scrollY / (window.innerHeight * 0.9), 1);
+            setProgress(p);
         };
-        el.addEventListener('mousemove', move, { passive: true });
-        return () => el.removeEventListener('mousemove', move);
+        window.addEventListener('scroll', onScroll, { passive: true });
+        return () => window.removeEventListener('scroll', onScroll);
     }, []);
-    return ref;
+    return progress;
 }
 
 export default function LandingPage() {
@@ -68,7 +134,8 @@ export default function LandingPage() {
     const { theme, toggleTheme } = useTheme();
     const [scrolled, setScrolled] = useState(false);
     const [logoSpins, setLogoSpins] = useState(0);
-    const heroRef = CursorSpotlight();
+    const heroRef = useRef(null);
+    const scrollProgress = useScrollProgress();
 
     useEffect(() => {
         const fn = () => setScrolled(window.scrollY > 30);
@@ -134,76 +201,87 @@ export default function LandingPage() {
                     minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center',
                     justifyContent: 'center', paddingTop: 80, paddingBottom: 60,
                     position: 'relative', overflow: 'hidden',
-                    /* cursor spotlight */
-                    background: `radial-gradient(600px circle at var(--cx, 50%) var(--cy, 40%), oklch(42% 0.108 148 / 0.07), transparent 60%), var(--bg-primary)`,
+                    backgroundColor: 'var(--bg-primary)',
                 }}
             >
-                {/* Background shapes */}
-                <div aria-hidden style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
-                    <div style={{ position: 'absolute', width: 560, height: 560, borderRadius: '50%', top: '2%', left: '12%', background: 'radial-gradient(circle, oklch(42% 0.108 148 / 0.06), transparent 70%)', animation: `orb1 13s ease-in-out infinite` }} />
-                    <div style={{ position: 'absolute', width: 400, height: 400, borderRadius: '50%', bottom: '8%', right: '10%', background: 'radial-gradient(circle, oklch(57% 0.130 65 / 0.05), transparent 70%)', animation: `orb2 18s ease-in-out infinite` }} />
-                    <div style={{ position: 'absolute', inset: 0, opacity: 0.025, backgroundImage: `radial-gradient(circle at 1px 1px, var(--text-tertiary) 1px, transparent 0)`, backgroundSize: '38px 38px' }} />
-                </div>
+                {/* WebGL Aurora Background */}
+                <AuroraCanvas />
+                {/* Dot grid overlay */}
+                <div aria-hidden style={{ position: 'absolute', inset: 0, opacity: 0.025, backgroundImage: `radial-gradient(circle at 1px 1px, var(--text-tertiary) 1px, transparent 0)`, backgroundSize: '38px 38px', pointerEvents: 'none', zIndex: 1 }} />
 
-                <div style={{ maxWidth: 900, margin: '0 auto', padding: '0 24px', textAlign: 'center', position: 'relative', zIndex: 1 }}>
+                <div style={{ maxWidth: 900, margin: '0 auto', padding: '0 24px', textAlign: 'center', position: 'relative', zIndex: 2 }}>
 
-                    {/* Heading */}
+                    {/* Heading — word-by-word reveal + scroll parallax */}
                     <h1 style={{
                         fontFamily: 'var(--font-heading)', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.04,
                         fontSize: 'clamp(2.6rem, 7vw, 5.2rem)',
-                        marginBottom: 24, animation: `fadeUp 0.65s 0.08s ${EASE_EXPO} both`
+                        marginBottom: 24, overflow: 'hidden',
+                        transform: `translateY(${scrollProgress * -60}px) scale(${1 - scrollProgress * 0.08})`,
+                        opacity: 1 - scrollProgress * 1.2,
+                        transition: 'none',
                     }}>
-                        Uma nova forma de
+                        <WordReveal text="Uma nova forma de" startDelay={100} wordDelay={90} />
+                        <br />
                         <span style={{ position: 'relative', display: 'inline-block', color: 'var(--color-primary-500)', margin: '0 0.15em' }}>
-                            organizar
-                            {/* Animated underline */}
+                            <WordReveal text="organizar" startDelay={500} />
                             <svg viewBox="0 0 240 10" style={{ position: 'absolute', bottom: -4, left: 0, width: '100%', height: 10 }} preserveAspectRatio="none">
-                                <path d="M4 7 Q60 1 120 6 Q180 11 236 5" stroke="var(--color-primary-400)" strokeWidth="2.5" fill="none" strokeLinecap="round" style={{ strokeDasharray: 250, animation: `drawLine 0.9s 0.5s ${EASE_EXPO} both` }} />
+                                <path d="M4 7 Q60 1 120 6 Q180 11 236 5" stroke="var(--color-primary-400)" strokeWidth="2.5" fill="none" strokeLinecap="round" style={{ strokeDasharray: 250, animation: `drawLine 0.9s 0.8s ${EASE_EXPO} both` }} />
                             </svg>
                         </span>
                         <br />
-                        o que <span style={{ color: 'var(--color-primary-700)' }}>importa</span>
+                        <WordReveal text="o que" startDelay={700} wordDelay={90} />{' '}
+                        <span style={{ color: 'var(--color-primary-700)' }}><WordReveal text="importa" startDelay={850} /></span>
                     </h1>
 
-                    {/* Subtitle */}
+                    {/* Subtitle — typing effect + parallax */}
                     <p style={{
                         fontSize: 'clamp(1rem, 2.2vw, 1.2rem)', maxWidth: 580, margin: '0 auto 40px', lineHeight: 1.7,
-                        color: 'var(--text-secondary)', fontWeight: 500,
-                        animation: `fadeUp 0.65s 0.16s ${EASE_EXPO} both`
+                        color: 'var(--text-secondary)', fontWeight: 500, minHeight: '3.4em',
+                        transform: `translateY(${scrollProgress * -35}px)`,
+                        opacity: 1 - scrollProgress * 1.5,
+                        transition: 'none',
                     }}>
-                        O OrganizeLife é um sistema centralizado para organizar suas contas, rendas e compromissos. Abandone a fricção das rotinas complexas e ganhe clareza do seu dia a dia.
+                        <TypeWriter text="O OrganizeLife é um sistema centralizado para organizar suas contas, rendas e compromissos. Abandone a fricção das rotinas complexas e ganhe clareza do seu dia a dia." startDelay={1200} speed={18} />
                     </p>
 
-                    {/* CTAs */}
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, justifyContent: 'center', animation: `fadeUp 0.65s 0.24s ${EASE_EXPO} both` }}>
+                    {/* CTAs — magnetic hover + parallax */}
+                    <div style={{
+                        display: 'flex', flexWrap: 'wrap', gap: 14, justifyContent: 'center',
+                        animation: `fadeUp 0.65s 0.24s ${EASE_EXPO} both`,
+                        transform: `translateY(${scrollProgress * -15}px)`,
+                        opacity: 1 - scrollProgress * 1.8,
+                        transition: 'none',
+                    }}>
                         {!isAuthenticated && (
-                            <Link to="/register" style={{
-                                display: 'inline-flex', alignItems: 'center', gap: 8,
-                                padding: '14px 28px', borderRadius: 12, fontWeight: 700, fontSize: 15, textDecoration: 'none', color: '#fff',
-                                background: 'linear-gradient(135deg, var(--color-primary-600), var(--color-primary-700))',
-                                boxShadow: '0 6px 18px -4px oklch(34% 0.090 149 / 0.35)',
-                                transition: `transform 0.25s ${EASE_EXPO}, box-shadow 0.25s ${EASE_EXPO}`,
-                            }}
-                                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 10px 26px -4px oklch(34% 0.090 149 / 0.45)'; }}
-                                onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '0 6px 18px -4px oklch(34% 0.090 149 / 0.35)'; }}
-                                onMouseDown={e => e.currentTarget.style.transform = 'translateY(1px) scale(0.98)'}
-                                onMouseUp={e => e.currentTarget.style.transform = 'translateY(-3px)'}
-                            >
-                                Crie sua conta
-                            </Link>
+                            <MagneticButton as="div" radius={140} strength={0.35} style={{ borderRadius: 12 }}>
+                                <Link to="/register" style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: 8,
+                                    padding: '14px 28px', borderRadius: 12, fontWeight: 700, fontSize: 15, textDecoration: 'none', color: '#fff',
+                                    background: 'linear-gradient(135deg, var(--color-primary-600), var(--color-primary-700))',
+                                    boxShadow: '0 6px 18px -4px oklch(34% 0.090 149 / 0.35)',
+                                    transition: `box-shadow 0.25s ${EASE_EXPO}`,
+                                }}
+                                    onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 14px 32px -4px oklch(34% 0.090 149 / 0.5)'; }}
+                                    onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 6px 18px -4px oklch(34% 0.090 149 / 0.35)'; }}
+                                >
+                                    Crie sua conta
+                                </Link>
+                            </MagneticButton>
                         )}
-                        <a href="#features" style={{
-                            display: 'inline-flex', alignItems: 'center', gap: 8,
-                            padding: '14px 28px', borderRadius: 12, fontWeight: 600, fontSize: 15, textDecoration: 'none',
-                            backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)',
-                            outline: '1px solid var(--border-primary)',
-                            transition: `transform 0.25s ${EASE_EXPO}, background-color 0.2s`,
-                        }}
-                            onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--bg-hover)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                            onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'var(--bg-card)'; e.currentTarget.style.transform = ''; }}
-                        >
-                            Conhecer recursos
-                        </a>
+                        <MagneticButton as="div" radius={100} strength={0.25} style={{ borderRadius: 12 }}>
+                            <a href="#features" onClick={(e) => { e.preventDefault(); smoothScrollTo('features'); }} style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 8,
+                                padding: '14px 28px', borderRadius: 12, fontWeight: 600, fontSize: 15, textDecoration: 'none',
+                                backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)',
+                                outline: '1px solid var(--border-primary)',
+                                transition: `background-color 0.2s`,
+                            }}
+                                onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--bg-hover)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'var(--bg-card)'; }}
+                            >
+                                Conhecer recursos
+                            </a>
+                        </MagneticButton>
                     </div>
 
                     {/* Trust signals */}
@@ -218,10 +296,15 @@ export default function LandingPage() {
                     </div>
                 </div>
 
-                {/* Scroll cue */}
-                <div aria-hidden style={{ position: 'absolute', bottom: 28, left: '50%', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, opacity: 0.35, animation: `fadeUp 1s 0.8s ${EASE_EXPO} both` }}>
+                {/* Scroll cue — fades out as user scrolls */}
+                <div aria-hidden style={{
+                    position: 'absolute', bottom: 28, left: '50%', transform: 'translateX(-50%)',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                    opacity: Math.max(0, 0.35 - scrollProgress * 2),
+                    animation: `fadeUp 1s 0.8s ${EASE_EXPO} both`, zIndex: 2,
+                }}>
                     <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>scroll</span>
-                    <div style={{ width: 1, height: 28, background: 'linear-gradient(to bottom, var(--text-tertiary), transparent)' }} />
+                    <div style={{ width: 1, height: 28, background: 'linear-gradient(to bottom, var(--text-tertiary), transparent)', animation: 'scrollPulse 2s ease-in-out infinite' }} />
                 </div>
             </section>
 
@@ -233,9 +316,9 @@ export default function LandingPage() {
                         { label: 'Módulos', target: 5, suffix: '' },
                         { label: 'Widgets', target: 8, suffix: '+' },
                         { label: 'Gratuito', target: 100, suffix: '%' },
-                    ].map(({ label, target, suffix }) => (
+                    ].map(({ label, target, suffix }, i) => (
                         <div key={label}>
-                            <p style={{ fontSize: 'clamp(1.8rem, 4vw, 2.4rem)', fontWeight: 800, fontFamily: 'var(--font-heading)', letterSpacing: '-0.04em', color: 'var(--color-primary-600)' }}><AnimatedNumber target={target} suffix={suffix} /></p>
+                            <p style={{ fontSize: 'clamp(1.8rem, 4vw, 2.4rem)', fontWeight: 800, fontFamily: 'var(--font-heading)', letterSpacing: '-0.04em', color: 'var(--color-primary-600)' }}><AnimatedNumber target={target} suffix={suffix} delay={i * 150} /></p>
                             <p style={{ fontSize: 12, fontWeight: 600, marginTop: 2, color: 'var(--text-tertiary)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>{label}</p>
                         </div>
                     ))}
@@ -252,7 +335,7 @@ export default function LandingPage() {
                     </RevealBlock>
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
-                        {FEATURES.map((f, i) => <FeatureCard key={f.title} {...f} delay={i * 70} />)}
+                        {FEATURES.map((f, i) => <FeatureCard key={f.title} {...f} index={i} delay={i * 120} />)}
                     </div>
                 </div>
             </section>
@@ -363,35 +446,75 @@ function RevealBlock({ children, style = {} }) {
     );
 }
 
-/* ── FeatureCard ── */
-function FeatureCard({ icon: Icon, title, description, delay, color }) {
+/* ── FeatureCard — Tilt 3D + staggered cascade + scroll parallax ── */
+function FeatureCard({ icon: Icon, title, description, delay, color, index }) {
     const [ref, visible] = useScrollReveal(0.08);
     const [hovered, setHovered] = useState(false);
+    const cardRef = useRef(null);
+    const [tilt, setTilt] = useState({ x: 0, y: 0 });
+    const isEven = index % 2 === 0;
+
+    const handleMouseMove = useCallback((e) => {
+        const el = cardRef.current;
+        if (!el) return;
+        const rect = el.getBoundingClientRect();
+        const x = (e.clientX - rect.left) / rect.width - 0.5;
+        const y = (e.clientY - rect.top) / rect.height - 0.5;
+        setTilt({ x: y * -12, y: x * 12 });
+    }, []);
+
+    const handleMouseLeave = useCallback(() => {
+        setHovered(false);
+        setTilt({ x: 0, y: 0 });
+    }, []);
+
+    // Staggered cascade: even cards slide from left, odd from right
+    const slideFrom = isEven ? '-40px' : '40px';
 
     return (
-        <div ref={ref} style={{
-            padding: '28px 26px', borderRadius: 18, cursor: 'default',
-            backgroundColor: 'var(--bg-card)',
-            border: `1px solid ${hovered ? color + '60' : 'var(--border-primary)'}`,
-            boxShadow: hovered ? `0 12px 36px -8px ${color}30` : 'var(--shadow-card)',
-            opacity: visible ? 1 : 0,
-            transform: visible ? 'translateY(0)' : 'translateY(28px)',
-            transition: `opacity 0.6s ${delay}ms ${EASE_EXPO}, transform 0.6s ${delay}ms ${EASE_EXPO}, border-color 0.3s, box-shadow 0.3s`,
-        }}
-            onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
+        <div ref={(el) => { ref.current = el; cardRef.current = el; }}
+            style={{
+                padding: '28px 26px', borderRadius: 18, cursor: 'default', position: 'relative', overflow: 'hidden',
+                backgroundColor: 'var(--bg-card)',
+                border: `1px solid ${hovered ? color + '60' : 'var(--border-primary)'}`,
+                boxShadow: hovered ? `0 16px 40px -8px ${color}35` : 'var(--shadow-card)',
+                opacity: visible ? 1 : 0,
+                transform: visible
+                    ? `perspective(800px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) scale(${hovered ? 1.02 : 1})`
+                    : `translateX(${slideFrom}) translateY(28px) scale(0.95)`,
+                transition: hovered
+                    ? `transform 0.15s ease-out, border-color 0.3s, box-shadow 0.3s`
+                    : `opacity 0.7s ${delay}ms ${EASE_EXPO}, transform 0.7s ${delay}ms ${EASE_EXPO}, border-color 0.3s, box-shadow 0.3s`,
+                transformStyle: 'preserve-3d',
+                willChange: 'transform',
+            }}
+            onMouseEnter={() => setHovered(true)}
+            onMouseMove={handleMouseMove}
+            onMouseLeave={handleMouseLeave}>
 
-            {/* Icon */}
-            <div style={{
-                width: 44, height: 44, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 18,
-                backgroundColor: color + '18',
-                transform: hovered ? 'scale(1.1) rotate(-4deg)' : 'scale(1)',
-                transition: `transform 0.3s ${EASE_EXPO}`,
-            }}>
-                <Icon size={20} style={{ color }} />
+            {/* Inner content with slight 3D depth */}
+            <div style={{ transform: hovered ? 'translateZ(20px)' : 'translateZ(0)', transition: `transform 0.3s ${EASE_EXPO}` }}>
+                <div style={{
+                    width: 44, height: 44, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 18,
+                    backgroundColor: color + '18',
+                    transform: hovered ? 'scale(1.15) rotate(-6deg)' : 'scale(1)',
+                    transition: `transform 0.3s ${EASE_EXPO}`,
+                }}>
+                    <Icon size={20} style={{ color }} />
+                </div>
+
+                <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 16, letterSpacing: '-0.01em', marginBottom: 8 }}>{title}</h3>
+                <p style={{ fontSize: 14, lineHeight: 1.65, color: 'var(--text-secondary)' }}>{description}</p>
             </div>
 
-            <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 16, letterSpacing: '-0.01em', marginBottom: 8 }}>{title}</h3>
-            <p style={{ fontSize: 14, lineHeight: 1.65, color: 'var(--text-secondary)' }}>{description}</p>
+            {/* Shine effect on hover */}
+            {hovered && (
+                <div aria-hidden style={{
+                    position: 'absolute', inset: 0, borderRadius: 18, pointerEvents: 'none',
+                    background: `radial-gradient(circle at ${(tilt.y / 12 + 0.5) * 100}% ${(-tilt.x / 12 + 0.5) * 100}%, ${color}12, transparent 60%)`,
+                    transition: 'opacity 0.3s',
+                }} />
+            )}
         </div>
     );
 }
@@ -439,6 +562,10 @@ const CSS_KEYFRAMES = `
   @keyframes pulse {
     0%,100% { opacity: 1; }
     50% { opacity: 0.5; }
+  }
+  @keyframes scrollPulse {
+    0%,100% { opacity: 0.4; transform: scaleY(1); }
+    50% { opacity: 1; transform: scaleY(1.15); }
   }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {

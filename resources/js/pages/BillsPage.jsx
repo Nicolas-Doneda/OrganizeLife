@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import AppLayout from '../components/layouts/AppLayout';
 import api from '../services/api';
+import useSubmitGuard, { useActionGuard } from '../hooks/useSubmitGuard';
 import {
     Plus,
     Check,
@@ -67,6 +68,8 @@ export default function BillsPage() {
     // Modal state
     const [showModal, setShowModal] = useState(false);
     const [editingBill, setEditingBill] = useState(null);
+    const { isSubmitting, guard } = useSubmitGuard();
+    const { isActionInProgress, guardAction } = useActionGuard();
 
     const fetchBills = useCallback(async () => {
         setLoading(true);
@@ -92,24 +95,30 @@ export default function BillsPage() {
     }, [fetchBills]);
 
     async function handlePay(bill) {
-        try {
-            await api.patch(`/monthly-bills/${bill.id}/pay`);
-            fetchBills(); // Refetch para atualizar totais
-        } catch (err) { console.error('Erro:', err); }
+        await guardAction(bill.id, async () => {
+            try {
+                await api.patch(`/monthly-bills/${bill.id}/pay`);
+                fetchBills(); // Refetch para atualizar totais
+            } catch (err) { console.error('Erro:', err); }
+        });
     }
 
     async function handleUndoPay(bill) {
-        try {
-            await api.patch(`/monthly-bills/${bill.id}/pending`);
-            fetchBills();
-        } catch (err) { console.error('Erro:', err); }
+        await guardAction(bill.id, async () => {
+            try {
+                await api.patch(`/monthly-bills/${bill.id}/pending`);
+                fetchBills();
+            } catch (err) { console.error('Erro:', err); }
+        });
     }
 
     async function handleCancel(bill) {
-        try {
-            await api.patch(`/monthly-bills/${bill.id}/cancel`);
-            fetchBills();
-        } catch (err) { console.error('Erro:', err); }
+        await guardAction(bill.id, async () => {
+            try {
+                await api.patch(`/monthly-bills/${bill.id}/cancel`);
+                fetchBills();
+            } catch (err) { console.error('Erro:', err); }
+        });
     }
 
     async function handleDelete(bill) {
@@ -142,12 +151,51 @@ export default function BillsPage() {
     }
 
     async function handleSave({ payload, isRecurring, isInstallment, installmentMath }) {
-        try {
-            if (editingBill) {
-                let recurringId = payload.recurring_bill_id || editingBill.recurring_bill_id;
+        await guard(async () => {
+            try {
+                if (editingBill) {
+                    let recurringId = payload.recurring_bill_id || editingBill.recurring_bill_id;
 
-                // Se marcou para ser recorrente, mas a conta original NÃO era
-                if (isRecurring && !editingBill.recurring_bill_id) {
+                    // Se marcou para ser recorrente, mas a conta original NÃO era
+                    if (isRecurring && !editingBill.recurring_bill_id) {
+                        const dueDay = parseInt(payload.due_day) || 1;
+                        const recurringRes = await api.post('/recurring-bills', {
+                            name: payload.name_snapshot,
+                            expected_amount: parseFloat(payload.expected_amount) || 0,
+                            due_day: dueDay,
+                            category_id: payload.category_id || null,
+                        });
+                        recurringId = recurringRes.data.data.id;
+                    }
+
+                    // Se desmarcou recorrente de uma conta que ERA recorrente
+                    if (!isRecurring && editingBill.recurring_bill_id) {
+                        recurringId = null;
+                    }
+
+                    let dueDate = payload.due_date;
+                    if (isRecurring && payload.due_day) {
+                        const dueDay = parseInt(payload.due_day) || 1;
+                        dueDate = `${year}-${String(month).padStart(2, '0')}-${String(dueDay).padStart(2, '0')}`;
+                    }
+
+                    let updateAll = false;
+                    if (editingBill.installment_group_id) {
+                        updateAll = window.confirm('Deseja aplicar a Conta/Categoria escrita também para as PRÓXIMAS parcelas deste parcelamento?\n(Clique em OK para aplicar para as próximas, ou Cancelar para alterar apenas esta).');
+                    }
+
+                    // Editar conta existente
+                    await api.put(`/monthly-bills/${editingBill.id}`, {
+                        ...payload,
+                        due_date: dueDate,
+                        expected_amount: parseFloat(payload.expected_amount) || 0,
+                        category_id: payload.category_id || null,
+                        wallet_id: payload.wallet_id || null,
+                        recurring_bill_id: recurringId,
+                        update_all_installments: updateAll ? 1 : 0
+                    });
+                } else if (isRecurring) {
+                    // Criar recorrente: salva em recurring_bills E cria a primeira monthly_bill
                     const dueDay = parseInt(payload.due_day) || 1;
                     const recurringRes = await api.post('/recurring-bills', {
                         name: payload.name_snapshot,
@@ -155,82 +203,45 @@ export default function BillsPage() {
                         due_day: dueDay,
                         category_id: payload.category_id || null,
                     });
-                    recurringId = recurringRes.data.data.id;
+
+                    // Criar a monthly_bill deste mes vinculada a recorrente
+                    const dueDate = `${year}-${String(month).padStart(2, '0')}-${String(dueDay).padStart(2, '0')}`;
+                    await api.post('/monthly-bills', {
+                        name_snapshot: payload.name_snapshot,
+                        expected_amount: parseFloat(payload.expected_amount) || 0,
+                        due_date: dueDate,
+                        year,
+                        month,
+                        category_id: payload.category_id || null,
+                        recurring_bill_id: recurringRes.data.data.id,
+                        notes: payload.notes || null,
+                        wallet_id: payload.wallet_id || null,
+                    });
+                } else {
+                    // Criar conta avulsa ou parcelada
+                    let finalAmount = parseFloat(payload.expected_amount) || 0;
+
+                    if (isInstallment && installmentMath === 'total_value') {
+                        const count = parseInt(payload.installments_count) || 2;
+                        finalAmount = finalAmount / count;
+                    }
+
+                    await api.post('/monthly-bills', {
+                        ...payload,
+                        year,
+                        month,
+                        expected_amount: finalAmount,
+                        category_id: payload.category_id || null,
+                        wallet_id: payload.wallet_id || null,
+                        is_installment: isInstallment,
+                        installments_count: isInstallment ? parseInt(payload.installments_count) || 2 : undefined
+                    });
                 }
 
-                // Se desmarcou recorrente de uma conta que ERA recorrente
-                if (!isRecurring && editingBill.recurring_bill_id) {
-                    recurringId = null;
-                }
-
-                let dueDate = payload.due_date;
-                if (isRecurring && payload.due_day) {
-                    const dueDay = parseInt(payload.due_day) || 1;
-                    dueDate = `${year}-${String(month).padStart(2, '0')}-${String(dueDay).padStart(2, '0')}`;
-                }
-
-                let updateAll = false;
-                if (editingBill.installment_group_id) {
-                    updateAll = window.confirm('Deseja aplicar a Conta/Categoria escrita também para as PRÓXIMAS parcelas deste parcelamento?\n(Clique em OK para aplicar para as próximas, ou Cancelar para alterar apenas esta).');
-                }
-
-                // Editar conta existente
-                await api.put(`/monthly-bills/${editingBill.id}`, {
-                    ...payload,
-                    due_date: dueDate,
-                    expected_amount: parseFloat(payload.expected_amount) || 0,
-                    category_id: payload.category_id || null,
-                    wallet_id: payload.wallet_id || null,
-                    recurring_bill_id: recurringId,
-                    update_all_installments: updateAll ? 1 : 0
-                });
-            } else if (isRecurring) {
-                // Criar recorrente: salva em recurring_bills E cria a primeira monthly_bill
-                const dueDay = parseInt(payload.due_day) || 1;
-                const recurringRes = await api.post('/recurring-bills', {
-                    name: payload.name_snapshot,
-                    expected_amount: parseFloat(payload.expected_amount) || 0,
-                    due_day: dueDay,
-                    category_id: payload.category_id || null,
-                });
-
-                // Criar a monthly_bill deste mes vinculada a recorrente
-                const dueDate = `${year}-${String(month).padStart(2, '0')}-${String(dueDay).padStart(2, '0')}`;
-                await api.post('/monthly-bills', {
-                    name_snapshot: payload.name_snapshot,
-                    expected_amount: parseFloat(payload.expected_amount) || 0,
-                    due_date: dueDate,
-                    year,
-                    month,
-                    category_id: payload.category_id || null,
-                    recurring_bill_id: recurringRes.data.data.id,
-                    notes: payload.notes || null,
-                    wallet_id: payload.wallet_id || null,
-                });
-            } else {
-                // Criar conta avulsa ou parcelada
-                let finalAmount = parseFloat(payload.expected_amount) || 0;
-
-                if (isInstallment && installmentMath === 'total_value') {
-                    const count = parseInt(payload.installments_count) || 2;
-                    finalAmount = finalAmount / count;
-                }
-
-                await api.post('/monthly-bills', {
-                    ...payload,
-                    year,
-                    month,
-                    expected_amount: finalAmount,
-                    category_id: payload.category_id || null,
-                    wallet_id: payload.wallet_id || null,
-                    is_installment: isInstallment,
-                    installments_count: isInstallment ? parseInt(payload.installments_count) || 2 : undefined
-                });
-            }
-
-            closeModal();
-            fetchBills();
-        } catch (err) { console.error('Erro:', err); }
+                closeModal();
+                fetchBills();
+            } catch (err) { console.error('Erro:', err); }
+        });
     }
 
     function openCreate() {
@@ -403,6 +414,7 @@ export default function BillsPage() {
                             bill={bill}
                             categoryColors={CATEGORY_COLORS}
                             wallets={wallets}
+                            actionInProgress={isActionInProgress(bill.id)}
                             onPay={() => handlePay(bill)}
                             onUndoPay={() => handleUndoPay(bill)}
                             onCancel={() => handleCancel(bill)}
@@ -420,6 +432,7 @@ export default function BillsPage() {
                 bill={editingBill}
                 categories={categories}
                 wallets={wallets}
+                submitting={isSubmitting}
             />
         </AppLayout >
     );
@@ -427,7 +440,7 @@ export default function BillsPage() {
 
 /* ========== Sub-components ========== */
 
-function BillCard({ bill, categoryColors, wallets = [], onPay, onUndoPay, onCancel, onEdit, onDelete }) {
+function BillCard({ bill, categoryColors, wallets = [], actionInProgress = false, onPay, onUndoPay, onCancel, onEdit, onDelete }) {
     const status = STATUS_CONFIG[bill.status] || STATUS_CONFIG.pending;
     const catColor = bill.category ? (categoryColors[bill.category.color] || '#6b7280') : null;
     const walletObj = bill.wallet_id ? wallets.find(w => w.id === bill.wallet_id) : null;
@@ -440,20 +453,25 @@ function BillCard({ bill, categoryColors, wallets = [], onPay, onUndoPay, onCanc
             {/* Checkbox / Status Icon */}
             {bill.status === 'pending' ? (
                 <button onClick={onPay}
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-300 hover:scale-110 hover:border-primary-500 hover:bg-primary-50"
+                    disabled={actionInProgress}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-300 hover:scale-110 hover:border-primary-500 hover:bg-primary-50 disabled:opacity-50 disabled:cursor-not-allowed"
                     style={{ borderColor: 'var(--border-secondary)' }} title="Marcar como paga">
-                    <Check size={14} className="opacity-0 transition-all duration-300 group-hover:opacity-100 scale-50 group-hover:scale-100" style={{ color: 'var(--color-primary-600)' }} />
+                    {actionInProgress ? <div className="h-3 w-3 animate-spin rounded-full border-2 border-[var(--color-primary-600)]/30 border-t-[var(--color-primary-600)]" /> : <Check size={14} className="opacity-0 transition-all duration-300 group-hover:opacity-100 scale-50 group-hover:scale-100" style={{ color: 'var(--color-primary-600)' }} />}
                 </button>
             ) : (
                 <div
                     className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all duration-300 ${bill.status === 'paid' ? 'cursor-pointer hover:opacity-80 hover:scale-105' : ''}`}
-                    style={{ backgroundColor: status.bg, color: status.color }}
-                    onClick={bill.status === 'paid' ? onUndoPay : undefined}
+                    style={{ backgroundColor: status.bg, color: status.color, opacity: actionInProgress ? 0.5 : 1 }}
+                    onClick={bill.status === 'paid' && !actionInProgress ? onUndoPay : undefined}
                     title={bill.status === 'paid' ? "Desfazer pagamento" : ""}
                 >
-                    {bill.status === 'paid' && <Check size={14} />}
-                    {bill.status === 'overdue' && <AlertTriangle size={14} />}
-                    {bill.status === 'canceled' && <X size={14} />}
+                    {actionInProgress ? <div className="h-3 w-3 animate-spin rounded-full border-2 border-current/30 border-t-current" /> : (
+                        <>
+                            {bill.status === 'paid' && <Check size={14} />}
+                            {bill.status === 'overdue' && <AlertTriangle size={14} />}
+                            {bill.status === 'canceled' && <X size={14} />}
+                        </>
+                    )}
                 </div>
             )}
 
@@ -521,7 +539,7 @@ function BillCard({ bill, categoryColors, wallets = [], onPay, onUndoPay, onCanc
             {/* Actions */}
             <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
                 {bill.status === 'paid' && (
-                    <button onClick={onUndoPay} className="flex items-center justify-center h-8 w-8 rounded-lg transition-colors hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]" title="Desfazer">
+                    <button onClick={onUndoPay} disabled={actionInProgress} className="flex items-center justify-center h-8 w-8 rounded-lg transition-colors hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-50 disabled:cursor-not-allowed" title="Desfazer">
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M3 7v6h6" />
                             <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
@@ -535,11 +553,11 @@ function BillCard({ bill, categoryColors, wallets = [], onPay, onUndoPay, onCanc
                     </svg>
                 </button>
                 {bill.status === 'pending' && (
-                    <button onClick={onCancel} className="flex items-center justify-center h-8 w-8 rounded-lg transition-colors hover:bg-[var(--bg-hover)] text-[var(--text-secondary)]" title="Cancelar">
+                    <button onClick={onCancel} disabled={actionInProgress} className="flex items-center justify-center h-8 w-8 rounded-lg transition-colors hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] disabled:opacity-50 disabled:cursor-not-allowed" title="Cancelar">
                         <X size={15} strokeWidth={2.5} />
                     </button>
                 )}
-                <button onClick={onDelete} className="flex items-center justify-center h-8 w-8 rounded-lg transition-colors hover:bg-red-50 text-[var(--text-secondary)] hover:text-[var(--color-danger-500)]" title="Remover">
+                <button onClick={onDelete} disabled={actionInProgress} className="flex items-center justify-center h-8 w-8 rounded-lg transition-colors hover:bg-red-50 text-[var(--text-secondary)] hover:text-[var(--color-danger-500)] disabled:opacity-50 disabled:cursor-not-allowed" title="Remover">
                     <Trash2 size={15} strokeWidth={2.5} />
                 </button>
             </div>

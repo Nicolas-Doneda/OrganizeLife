@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import AppLayout from '../components/layouts/AppLayout';
 import api from '../services/api';
+import useSubmitGuard, { useActionGuard } from '../hooks/useSubmitGuard';
 import {
     Plus,
     Check,
@@ -62,6 +63,8 @@ export default function IncomesPage() {
         status: 'pending',
         wallet_id: '',
     });
+    const { isSubmitting, guard } = useSubmitGuard();
+    const { isActionInProgress, guardAction } = useActionGuard();
 
     const fetchIncomes = useCallback(async () => {
         setLoading(true);
@@ -84,46 +87,54 @@ export default function IncomesPage() {
     }, [fetchIncomes]);
 
     async function handleReceive(income) {
-        try {
-            await api.patch(`/incomes/${income.id}/receive`);
-            fetchIncomes();
-        } catch (err) { console.error('Erro:', err); }
+        await guardAction(income.id, async () => {
+            try {
+                await api.patch(`/incomes/${income.id}/receive`);
+                fetchIncomes();
+            } catch (err) { console.error('Erro:', err); }
+        });
     }
 
     async function handleUndoReceive(income) {
-        try {
-            await api.put(`/incomes/${income.id}`, { status: 'pending' });
-            fetchIncomes();
-        } catch (err) { console.error('Erro:', err); }
+        await guardAction(income.id, async () => {
+            try {
+                await api.put(`/incomes/${income.id}`, { status: 'pending' });
+                fetchIncomes();
+            } catch (err) { console.error('Erro:', err); }
+        });
     }
 
     async function handleDelete(income) {
         if (!confirm('Remover esta renda?')) return;
-        try {
-            await api.delete(`/incomes/${income.id}`);
-            fetchIncomes();
-        } catch (err) { console.error('Erro:', err); }
+        await guardAction(income.id, async () => {
+            try {
+                await api.delete(`/incomes/${income.id}`);
+                fetchIncomes();
+            } catch (err) { console.error('Erro:', err); }
+        });
     }
 
     async function handleSubmit(e) {
         e.preventDefault();
-        try {
-            if (editingIncome) {
-                await api.put(`/incomes/${editingIncome.id}`, {
-                    ...form,
-                    amount: parseFloat(form.amount) || 0,
-                    wallet_id: form.wallet_id || null,
-                });
-            } else {
-                await api.post('/incomes', {
-                    ...form,
-                    amount: parseFloat(form.amount) || 0,
-                    wallet_id: form.wallet_id || null,
-                });
-            }
-            closeModal();
-            fetchIncomes();
-        } catch (err) { console.error('Erro:', err); }
+        await guard(async () => {
+            try {
+                if (editingIncome) {
+                    await api.put(`/incomes/${editingIncome.id}`, {
+                        ...form,
+                        amount: parseFloat(form.amount) || 0,
+                        wallet_id: form.wallet_id || null,
+                    });
+                } else {
+                    await api.post('/incomes', {
+                        ...form,
+                        amount: parseFloat(form.amount) || 0,
+                        wallet_id: form.wallet_id || null,
+                    });
+                }
+                closeModal();
+                fetchIncomes();
+            } catch (err) { console.error('Erro:', err); }
+        });
     }
 
     function openCreate() {
@@ -268,12 +279,12 @@ export default function IncomesPage() {
                         return (
                             <div key={income.id} className="group flex items-center gap-4 rounded-2xl border px-5 py-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md bg-[var(--bg-card)]" style={{ borderColor: 'var(--border-primary)' }}>
                                 {income.status === 'pending' ? (
-                                    <button onClick={() => handleReceive(income)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-300 hover:scale-110 hover:border-[var(--color-success-500)] hover:bg-[var(--color-success-50)]" style={{ borderColor: 'var(--border-secondary)' }} title="Marcar como recebido">
-                                        <Check size={14} className="text-[var(--color-success-600)] opacity-40 transition-opacity hover:opacity-100" />
+                                    <button onClick={() => handleReceive(income)} disabled={isActionInProgress(income.id)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-300 hover:scale-110 hover:border-[var(--color-success-500)] hover:bg-[var(--color-success-50)] disabled:opacity-50 disabled:cursor-not-allowed" style={{ borderColor: 'var(--border-secondary)' }} title="Marcar como recebido">
+                                        {isActionInProgress(income.id) ? <div className="h-3 w-3 animate-spin rounded-full border-2 border-[var(--color-success-600)]/30 border-t-[var(--color-success-600)]" /> : <Check size={14} className="text-[var(--color-success-600)] opacity-40 transition-opacity hover:opacity-100" />}
                                     </button>
                                 ) : (
-                                    <div className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full transition-all duration-300 hover:opacity-80 hover:scale-105" style={{ backgroundColor: status.bg, color: status.color }} onClick={() => handleUndoReceive(income)} title="Desfazer recebimento">
-                                        <Check size={14} />
+                                    <div className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full transition-all duration-300 hover:opacity-80 hover:scale-105" style={{ backgroundColor: status.bg, color: status.color, opacity: isActionInProgress(income.id) ? 0.5 : 1 }} onClick={() => !isActionInProgress(income.id) && handleUndoReceive(income)} title="Desfazer recebimento">
+                                        {isActionInProgress(income.id) ? <div className="h-3 w-3 animate-spin rounded-full border-2 border-current/30 border-t-current" /> : <Check size={14} />}
                                     </div>
                                 )}
 
@@ -310,8 +321,8 @@ export default function IncomesPage() {
                                             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                                         </svg>
                                     </button>
-                                    <button onClick={() => handleDelete(income)} className="flex items-center justify-center h-8 w-8 rounded-lg transition-colors hover:bg-red-50 text-[var(--text-secondary)] hover:text-[var(--color-danger-500)]" title="Remover">
-                                        <Trash2 size={15} strokeWidth={2.5} />
+                                    <button onClick={() => handleDelete(income)} disabled={isActionInProgress(income.id)} className="flex items-center justify-center h-8 w-8 rounded-lg transition-colors hover:bg-red-50 text-[var(--text-secondary)] hover:text-[var(--color-danger-500)] disabled:opacity-50 disabled:cursor-not-allowed" title="Remover">
+                                        {isActionInProgress(income.id) ? <div className="h-3 w-3 animate-spin rounded-full border-2 border-[var(--color-danger-500)]/30 border-t-[var(--color-danger-500)]" /> : <Trash2 size={15} strokeWidth={2.5} />}
                                     </button>
                                 </div>
                             </div>
@@ -385,8 +396,8 @@ export default function IncomesPage() {
 
                             <div className="flex justify-end gap-3 pt-4">
                                 <button type="button" onClick={closeModal} className="rounded-lg px-4 py-2.5 text-sm font-medium transition-colors hover:bg-[var(--bg-hover)]" style={{ color: 'var(--text-secondary)' }}>Cancelar</button>
-                                <button type="submit" className="btn-primary px-4 py-2.5">
-                                    {editingIncome ? 'Salvar Alterações' : 'Adicionar'}
+                                <button type="submit" disabled={isSubmitting} className="btn-primary px-4 py-2.5 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    {isSubmitting ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" /> : (editingIncome ? 'Salvar Alterações' : 'Adicionar')}
                                 </button>
                             </div>
                         </form>

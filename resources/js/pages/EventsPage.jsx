@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import AppLayout from '../components/layouts/AppLayout';
 import api from '../services/api';
+import useSubmitGuard, { useActionGuard } from '../hooks/useSubmitGuard';
 import { Plus, CalendarDays, Trash2, Pencil, Clock, MapPin } from 'lucide-react';
 
 const PRIORITY_CONFIG = {
@@ -21,6 +22,8 @@ export default function EventsPage() {
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState(null);
     const [form, setForm] = useState({ title: '', description: '', start_date: '', end_date: '', all_day: true, priority: 2, reminder_at: '' });
+    const { isSubmitting, guard } = useSubmitGuard();
+    const { isActionInProgress, guardAction } = useActionGuard();
 
     useEffect(() => { fetchEvents(); }, []);
 
@@ -32,19 +35,23 @@ export default function EventsPage() {
 
     async function handleSubmit(e) {
         e.preventDefault();
-        try {
-            const data = { ...form, end_date: form.end_date || null, reminder_at: form.reminder_at || null, priority: parseInt(form.priority) };
-            if (editing) { await api.put(`/events/${editing.id}`, data); }
-            else { await api.post('/events', data); }
-            setShowModal(false); setEditing(null);
-            setForm({ title: '', description: '', start_date: '', end_date: '', all_day: true, priority: 2, reminder_at: '' });
-            fetchEvents();
-        } catch (err) { console.error('Erro:', err); }
+        await guard(async () => {
+            try {
+                const data = { ...form, end_date: form.end_date || null, reminder_at: form.reminder_at || null, priority: parseInt(form.priority) };
+                if (editing) { await api.put(`/events/${editing.id}`, data); }
+                else { await api.post('/events', data); }
+                setShowModal(false); setEditing(null);
+                setForm({ title: '', description: '', start_date: '', end_date: '', all_day: true, priority: 2, reminder_at: '' });
+                fetchEvents();
+            } catch (err) { console.error('Erro:', err); }
+        });
     }
 
     async function handleDelete(event) {
         if (!confirm(`Remover o evento "${event.title}"?`)) return;
-        try { await api.delete(`/events/${event.id}`); fetchEvents(); } catch (err) { console.error('Erro:', err); }
+        await guardAction(event.id, async () => {
+            try { await api.delete(`/events/${event.id}`); fetchEvents(); } catch (err) { console.error('Erro:', err); }
+        });
     }
 
     function openCreate() {
@@ -157,7 +164,9 @@ export default function EventsPage() {
                             </div>
                             <div className="flex justify-end gap-3 pt-2">
                                 <button type="button" onClick={() => setShowModal(false)} className="rounded-lg px-4 py-2.5 text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Cancelar</button>
-                                <button type="submit" className="btn-primary px-4 py-2.5">{editing ? 'Salvar' : 'Criar'}</button>
+                                <button type="submit" disabled={isSubmitting} className="btn-primary px-4 py-2.5 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    {isSubmitting ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" /> : (editing ? 'Salvar' : 'Criar')}
+                                </button>
                             </div>
                         </form>
                     </div>
@@ -185,8 +194,8 @@ function EventCard({ event, onEdit, onDelete, formatDate }) {
             </div>
             <span className="hidden rounded-full px-2.5 py-0.5 text-xs font-medium sm:inline-block" style={{ backgroundColor: priority.bg, color: priority.color }}>{priority.label}</span>
             <div className="flex gap-1">
-                <button onClick={onEdit} className="rounded-lg p-1.5" style={{ color: 'var(--text-tertiary)' }}><Pencil size={14} /></button>
-                <button onClick={onDelete} className="rounded-lg p-1.5" style={{ color: 'var(--color-danger-500)' }}><Trash2 size={14} /></button>
+                <button onClick={onEdit} className="rounded-lg p-1.5 transition-colors hover:bg-[var(--bg-hover)]" style={{ color: 'var(--text-tertiary)' }}><Pencil size={14} /></button>
+                <button onClick={onDelete} className="rounded-lg p-1.5 transition-colors hover:bg-[var(--color-danger-50)] disabled:opacity-50 disabled:cursor-not-allowed" style={{ color: 'var(--color-danger-500)' }}><Trash2 size={14} /></button>
             </div>
         </div>
     );
