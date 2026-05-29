@@ -88,15 +88,25 @@ class Event extends Model
     public function scopeBetween($query, string $startDate, string $endDate)
     {
         return $query->where(function ($q) use ($startDate, $endDate) {
-            //Evento começa dentro do período
-            $q->whereBetween('start_date', [$startDate, $endDate])
-              //OU evento termina dentro do período (para eventos multi-dia)
-              ->orWhereBetween('end_date', [$startDate, $endDate])
-              //OU evento ENGLOBA todo o período (começou antes + termina depois)
-              ->orWhere(function ($q2) use ($startDate, $endDate) {
-                  $q2->where('start_date', '<=', $startDate)
-                      ->where('end_date', '>=', $endDate);
-              });
+            // Evento padrão dentro do período
+            $q->where(function ($qNormal) use ($startDate, $endDate) {
+                $qNormal->whereBetween('start_date', [$startDate, $endDate])
+                        ->orWhereBetween('end_date', [$startDate, $endDate])
+                        ->orWhere(function ($q2) use ($startDate, $endDate) {
+                            $q2->where('start_date', '<=', $startDate)
+                               ->whereNotNull('end_date')
+                               ->where('end_date', '>=', $endDate);
+                        });
+            })
+            // OU evento recorrente ativo no período
+            ->orWhere(function ($qRecur) use ($startDate, $endDate) {
+                $qRecur->where('recurrence_type', '!=', 'none')
+                       ->where('start_date', '<=', $endDate)
+                       ->where(function ($qRecurEnd) use ($startDate) {
+                           $qRecurEnd->whereNull('recurrence_end')
+                                     ->orWhere('recurrence_end', '>=', $startDate);
+                       });
+            });
         });
     }
 
@@ -137,10 +147,10 @@ class Event extends Model
 
     //EXPLICAÇÃO: Verifica se o evento já passou
     //Uso: if ($event->isPast()) { ... }
-    //Compara start_date com a data de hoje
+    //Compara start_date com a data de hoje (desconsidera horário)
     public function isPast(): bool
     {
-        return $this->start_date->isPast();
+        return $this->start_date->isBefore(today());
     }
 
     //EXPLICAÇÃO: Verifica se o evento é hoje
@@ -153,7 +163,7 @@ class Event extends Model
     //EXPLICAÇÃO: Verifica se é um evento futuro
     public function isUpcoming(): bool
     {
-        return $this->start_date->isFuture();
+        return $this->start_date->isAfter(today());
     }
 
     //EXPLICAÇÃO: Verifica se o evento dura múltiplos dias

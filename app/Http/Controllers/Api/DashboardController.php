@@ -21,11 +21,22 @@ class DashboardController extends Controller
         $year = $request->integer('year', now()->year);
         $month = $request->integer('month', now()->month);
 
-        //Busca contas do mês com eager loading
-        $monthlyBills = $user->monthlyBills()
-            ->with('category')
-            ->forMonth($year, $month)
-            ->get();
+        // Self-Healing: transita contas vencidas de pending para overdue automaticamente
+        // Usamos exists() para evitar escritas desnecessárias no banco de dados em endpoints GET (P1)
+        $hasOverdue = $user->monthlyBills()
+            ->where('status', MonthlyBill::STATUS_PENDING)
+            ->where('due_date', '<', now()->toDateString())
+            ->exists();
+
+        if ($hasOverdue) {
+            $user->monthlyBills()
+                ->where('status', MonthlyBill::STATUS_PENDING)
+                ->where('due_date', '<', now()->toDateString())
+                ->update(['status' => MonthlyBill::STATUS_OVERDUE]);
+        }
+
+        //Busca contas do mês com eager loading e projeções virtuais de recorrentes
+        $monthlyBills = $user->getMonthlyBillsWithVirtual($year, $month);
 
         //RESUMO FINANCEIRO DO MÊS
         //EXPLICAÇÃO: Todos os cálculos são feitos na Collection (em memória)
@@ -41,11 +52,8 @@ class DashboardController extends Controller
             'bills_overdue' => $monthlyBills->where('status', MonthlyBill::STATUS_OVERDUE)->count(),
         ];
 
-        // INCOMES DO MÊS
-        $incomes = $user->incomes()
-            ->whereYear('expected_date', $year)
-            ->whereMonth('expected_date', $month)
-            ->get();
+        // INCOMES DO MÊS (injected with virtual ones)
+        $incomes = $user->getIncomesWithVirtual($year, $month);
 
         $financialSummary['total_incomes'] = $incomes->sum('amount');
         $financialSummary['total_incomes_received'] = $incomes->where('status', 'received')->sum('amount');
@@ -58,10 +66,12 @@ class DashboardController extends Controller
         
         $activeSavingIds = $user->savings()->pluck('id');
 
+        $startDate = \Carbon\Carbon::createFromDate($year, $month, 1)->startOfMonth()->toDateString();
+        $endDate = \Carbon\Carbon::createFromDate($year, $month, 1)->endOfMonth()->toDateString();
+
         $savingsDepositedThisMonth = $user->savingDeposits()
             ->whereIn('saving_id', $activeSavingIds)
-            ->whereYear('deposit_date', $year)
-            ->whereMonth('deposit_date', $month)
+            ->whereBetween('deposit_date', [$startDate, $endDate])
             ->sum('amount');
 
         $financialSummary['budget_spent'] = [
@@ -141,33 +151,43 @@ class DashboardController extends Controller
     public function history(Request $request): JsonResponse
     {
         $user = $request->user();
-        $months = $request->integer('months', 6); // padrão: últimos 6 meses
+        $startYear = $request->integer('year', now()->year);
+        $startMonth = $request->integer('month', now()->month);
+        $months = $request->integer('months', 6); // padrão: próximos 6 meses
 
         //Limita entre 1 e 24 meses (segurança para não sobrecarregar)
         $months = max(1, min(24, $months));
 
-        $history = $user->monthlyBills()
-            ->select(
-                'year',
-                'month',
-                DB::raw('SUM(expected_amount) as total_expected'),
-                DB::raw('SUM(CASE WHEN status = \'paid\' THEN paid_amount ELSE 0 END) as total_paid'),
-                DB::raw('COUNT(*) as bills_count'),
-                DB::raw('SUM(CASE WHEN status = \'paid\' THEN 1 ELSE 0 END) as paid_count'),
-            )
-            ->groupBy('year', 'month')
-            ->orderByDesc('year')
-            ->orderByDesc('month')
-            ->limit($months)
-            ->get()
-            //EXPLICAÇÃO: reverse() inverte a ordem para o gráfico
-            //O banco retorna do mais recente ao mais antigo (DESC)
-            //O gráfico precisa do mais antigo ao mais recente (cronológico)
-            ->reverse()
-            ->values();
+        $data = [];
+        $currentDate = \Carbon\Carbon::createFromDate($startYear, $startMonth, 1);
+
+        for ($i = 0; $i < $months; $i++) {
+            $y = $currentDate->year;
+            $m = $currentDate->month;
+
+            // Busca as contas daquele mês, incluindo as recorrentes virtuais
+            $monthlyBills = $user->getMonthlyBillsWithVirtual($y, $m);
+
+            $totalExpected = $monthlyBills->sum('expected_amount');
+            $totalPaid = $monthlyBills->where('status', MonthlyBill::STATUS_PAID)->sum('paid_amount');
+            $billsCount = $monthlyBills->count();
+            $paidCount = $monthlyBills->where('status', MonthlyBill::STATUS_PAID)->count();
+
+            $data[] = [
+                'year' => $y,
+                'month' => $m,
+                'total_expected' => (float)$totalExpected,
+                'total_paid' => (float)$totalPaid,
+                'bills_count' => $billsCount,
+                'paid_count' => $paidCount,
+            ];
+
+            // Avança para o próximo mês
+            $currentDate->addMonth();
+        }
 
         return response()->json([
-            'data' => $history,
+            'data' => $data,
         ]);
     }
 }

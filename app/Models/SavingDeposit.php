@@ -9,6 +9,7 @@ class SavingDeposit extends Model
     protected $fillable = [
         'user_id',
         'saving_id',
+        'wallet_id',
         'amount',
         'deposit_date',
     ];
@@ -26,5 +27,10 @@ class SavingDeposit extends Model
     public function savingAccount()
     {
         return $this->belongsTo(Saving::class, 'saving_id');
+    }
+
+    public function wallet()
+    {
+        return $this->belongsTo(Wallet::class);
     }
 }

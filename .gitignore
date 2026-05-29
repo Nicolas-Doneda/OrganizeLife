@@ -22,3 +22,12 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Agent and AI Tool configurations
+.agents/
+skills-lock.json
+
+# Local build logs and debug tools
+/build_log.txt
+/build_output.txt
+/test_counts.php

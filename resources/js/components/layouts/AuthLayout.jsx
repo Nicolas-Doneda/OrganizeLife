@@ -1,32 +1,19 @@
 import ThemeToggle from '../ui/ThemeToggle';
+import LogoMark from '../ui/LogoMark';
 
 export default function AuthLayout({ children }) {
     return (
-        <div className="relative flex min-h-screen items-center justify-center px-4 overflow-hidden bg-[var(--bg-secondary)] transition-colors duration-300">
-            {/* Decorative background elements */}
+        <div className="relative flex min-h-screen items-center justify-center px-4 overflow-hidden bg-[var(--bg-primary)] transition-colors duration-300 page-enter">
+            {/* Stationery Dot Matrix Background */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                {/* Large gradient orb — top right */}
                 <div
-                    className="absolute -top-32 -right-32 w-[500px] h-[500px] rounded-full opacity-[0.07] dark:opacity-[0.05]"
+                    className="absolute inset-0 opacity-[0.4] dark:opacity-[0.15]"
                     style={{
-                        background: 'radial-gradient(circle, var(--color-primary-400), transparent 70%)',
+                        backgroundImage: `radial-gradient(var(--border-primary) 1.5px, transparent 1.5px)`,
+                        backgroundSize: '24px 24px',
                     }}
                 />
-                {/* Small accent orb — bottom left */}
-                <div
-                    className="absolute -bottom-24 -left-24 w-[350px] h-[350px] rounded-full opacity-[0.06] dark:opacity-[0.04]"
-                    style={{
-                        background: 'radial-gradient(circle, var(--color-warning-500), transparent 70%)',
-                    }}
-                />
-                {/* Subtle grid pattern overlay */}
-                <div
-                    className="absolute inset-0 opacity-[0.03] dark:opacity-[0.02]"
-                    style={{
-                        backgroundImage: `radial-gradient(circle at 1px 1px, var(--text-tertiary) 1px, transparent 0)`,
-                        backgroundSize: '32px 32px',
-                    }}
-                />
+
             </div>
 
             {/* Theme toggle */}
@@ -34,39 +21,38 @@ export default function AuthLayout({ children }) {
                 <ThemeToggle />
             </div>
 
-            <div className="w-full max-w-md relative z-10">
-                {/* Logo */}
+            <div className="w-full max-w-md relative z-10 my-8">
+                {/* Logo & Header styled as a ledger header */}
                 <div className="mb-8 flex flex-col items-center">
-                    <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl shadow-lg"
+                    <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-xl border border-[var(--border-primary)]"
                         style={{
-                            background: 'linear-gradient(135deg, var(--color-primary-600), var(--color-primary-700))',
-                            boxShadow: '0 6px 18px -4px oklch(34% 0.090 149 / 0.28)',
+                            background: 'linear-gradient(135deg, var(--color-primary-500), var(--color-primary-600))',
+                            boxShadow: 'var(--shadow-sm)',
                         }}
                     >
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                            <path d="M2 17l10 5 10-5" />
-                            <path d="M2 12l10 5 10-5" />
-                        </svg>
+                        <LogoMark size={26} strokeColor="white" fillColor="white" strokeWidth="2.2" />
                     </div>
-                    <h1 className="text-2xl font-bold tracking-tight" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading)' }}>
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-primary-600)] bg-[var(--color-primary-50)] dark:bg-[var(--color-primary-950)] px-2.5 py-0.5 rounded border border-[var(--color-primary-200)]/40">
+                        Gestão Financeira
+                    </span>
+                    <h1 className="text-2xl font-extrabold tracking-tight mt-2 text-[var(--text-primary)] font-heading">
                         OrganizeLife
                     </h1>
-                    <p className="mt-1.5 text-sm font-medium" style={{ color: 'var(--text-tertiary)' }}>
-                        Organize sua vida em um só lugar
+                    <p className="mt-1 text-xs font-medium text-[var(--text-tertiary)]">
+                        Organização Simples e Inteligente
                     </p>
                 </div>
 
-                {/* Form card */}
+                {/* Form card styled as an index card / physical voucher sheet */}
                 <div
-                    className="rounded-2xl border p-8 backdrop-blur-sm"
+                    className="relative rounded-xl border border-[var(--border-primary)] p-8 bg-[var(--bg-card)] shadow-md overflow-hidden"
                     style={{
-                        backgroundColor: 'var(--bg-card)',
-                        borderColor: 'var(--border-primary)',
-                        boxShadow: 'var(--shadow-lg), var(--shadow-glow)',
+                        borderTop: '6px solid var(--color-primary-500)',
                     }}
                 >
-                    {children}
+                    <div className="relative">
+                        {children}
+                    </div>
                 </div>
             </div>
         </div>

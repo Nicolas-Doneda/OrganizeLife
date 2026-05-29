@@ -20,7 +20,7 @@ class StoreIncomeRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'amount' => ['required', 'numeric', 'min:0.01'],
-            'type' => ['required', 'string', 'in:fixed,variable'],
+            'is_recurring' => ['sometimes', 'boolean'],
             'expected_date' => ['nullable', 'date'],
             'status' => ['required', 'string', 'in:pending,received'],
             'wallet_id' => [

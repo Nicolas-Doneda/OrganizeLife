@@ -23,18 +23,30 @@ class SavingController extends Controller
             'current_amount' => 'nullable|numeric|min:0',
             'color' => 'nullable|string',
             'icon' => 'nullable|string',
+            'wallet_id' => [
+                'nullable',
+                'integer',
+                \Illuminate\Validation\Rule::exists('wallets', 'id')
+                    ->where('user_id', $request->user()->id)
+                    ->whereNull('deleted_at'),
+            ],
         ]);
 
         if (empty($validated['current_amount'])) {
             $validated['current_amount'] = 0;
         }
 
-        $saving = $request->user()->savings()->create($validated);
+        // Remove wallet_id from validated fields for Saving model
+        $savingData = $validated;
+        unset($savingData['wallet_id']);
+
+        $saving = $request->user()->savings()->create($savingData);
 
         // Se criou a caixinha já com saldo inicial, registra como depósito
         if ($saving->current_amount > 0) {
             $saving->deposits()->create([
                 'user_id' => $request->user()->id,
+                'wallet_id' => $validated['wallet_id'] ?? null,
                 'amount' => $saving->current_amount,
                 'deposit_date' => now()->toDateString(),
             ]);
@@ -46,15 +58,15 @@ class SavingController extends Controller
         ], 201);
     }
 
-    public function show(Request $request, Saving $saving): JsonResponse
+    public function show(Request $request, int $id): JsonResponse
     {
-        if ($saving->user_id !== $request->user()->id) abort(403);
+        $saving = $request->user()->savings()->findOrFail($id);
         return response()->json(['data' => $saving]);
     }
 
-    public function update(Request $request, Saving $saving): JsonResponse
+    public function update(Request $request, int $id): JsonResponse
     {
-        if ($saving->user_id !== $request->user()->id) abort(403);
+        $saving = $request->user()->savings()->findOrFail($id);
 
         $validated = $request->validate([
             'name' => 'sometimes|required|string|max:255',
@@ -62,18 +74,30 @@ class SavingController extends Controller
             'current_amount' => 'sometimes|required|numeric|min:0',
             'color' => 'nullable|string',
             'icon' => 'nullable|string',
+            'wallet_id' => [
+                'nullable',
+                'integer',
+                \Illuminate\Validation\Rule::exists('wallets', 'id')
+                    ->where('user_id', $request->user()->id)
+                    ->whereNull('deleted_at'),
+            ],
         ]);
 
         // Captura o saldo antigo antes de atualizar
         $oldAmount = (float) $saving->current_amount;
-        $saving->update($validated);
+        
+        $savingData = $validated;
+        unset($savingData['wallet_id']);
+        
+        $saving->update($savingData);
         $newAmount = (float) $saving->current_amount;
 
-        // Se o saldo aumentou, registra a diferença como depósito
+        // Se o saldo mudou, registra a diferença como depósito/retirada (P3)
         $diff = $newAmount - $oldAmount;
-        if ($diff > 0) {
+        if ($diff != 0) {
             $saving->deposits()->create([
                 'user_id' => $request->user()->id,
+                'wallet_id' => $validated['wallet_id'] ?? null,
                 'amount' => $diff,
                 'deposit_date' => now()->toDateString(),
             ]);
@@ -85,26 +109,36 @@ class SavingController extends Controller
         ]);
     }
 
-    public function destroy(Request $request, Saving $saving): JsonResponse
+    public function destroy(Request $request, int $id): JsonResponse
     {
-        if ($saving->user_id !== $request->user()->id) abort(403);
+        $saving = $request->user()->savings()->findOrFail($id);
         // Remove os depósitos antes do soft delete da caixinha
         $saving->deposits()->delete();
         $saving->delete();
         return response()->json(['message' => 'Economia removida com sucesso.']);
     }
 
-    public function addFunds(Request $request, Saving $saving): JsonResponse
+    public function addFunds(Request $request, int $id): JsonResponse
     {
-        if ($saving->user_id !== $request->user()->id) abort(403);
+        $saving = $request->user()->savings()->findOrFail($id);
 
-        $request->validate(['amount' => 'required|numeric|min:0.01']);
+        $request->validate([
+            'amount' => 'required|numeric',
+            'wallet_id' => [
+                'nullable',
+                'integer',
+                \Illuminate\Validation\Rule::exists('wallets', 'id')
+                    ->where('user_id', $request->user()->id)
+                    ->whereNull('deleted_at'),
+            ],
+        ]);
         $saving->current_amount += $request->amount;
         $saving->save();
 
         // Salvar a evidência (Transaction) do depósito para o Orçamento
         $saving->deposits()->create([
             'user_id' => $request->user()->id,
+            'wallet_id' => $request->input('wallet_id'),
             'amount' => $request->amount,
             'deposit_date' => now()->toDateString(),
         ]);
@@ -115,9 +149,9 @@ class SavingController extends Controller
         ]);
     }
 
-    public function deposits(Request $request, Saving $saving): JsonResponse
+    public function deposits(Request $request, int $id): JsonResponse
     {
-        if ($saving->user_id !== $request->user()->id) abort(403);
+        $saving = $request->user()->savings()->findOrFail($id);
 
         $deposits = $saving->deposits()
             ->orderByDesc('deposit_date')

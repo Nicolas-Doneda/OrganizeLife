@@ -70,33 +70,23 @@ const FRAGMENT_SHADER = `
     float aspect = u_resolution.x / u_resolution.y;
     vec2 p = vec2(uv.x * aspect, uv.y);
 
-    // Mouse influence — subtle warping toward cursor
+    // Mouse influence — extremely subtle warping toward cursor for organic warmth
     vec2 mouse = vec2(u_mouse.x * aspect, u_mouse.y);
     float mouseDist = length(p - mouse);
-    vec2 mouseWarp = (p - mouse) * 0.08 / (mouseDist + 0.5);
+    vec2 mouseWarp = (p - mouse) * 0.02 / (mouseDist + 0.5);
 
-    // Time
-    float t = u_time * 0.12;
+    // Extremely slow time progression for a calm, static feel
+    float t = u_time * 0.015;
 
-    // ── Aurora layers ──
-    float n1 = fbm(p * 1.4 + vec2(t * 0.7, t * 0.3) + mouseWarp);
-    float n2 = fbm(p * 2.2 - vec2(t * 0.4, t * 0.6) - mouseWarp * 0.5);
-    float n3 = fbm(p * 0.8 + vec2(t * 0.2, -t * 0.5));
+    // ── Aurora/Texture layers ──
+    float n1 = fbm(p * 1.4 + vec2(t * 0.5, t * 0.2) + mouseWarp);
+    float n2 = fbm(p * 2.2 - vec2(t * 0.3, t * 0.4) - mouseWarp * 0.5);
+    float n3 = fbm(p * 0.8 + vec2(t * 0.1, -t * 0.3));
 
-    // ── Color palette — Emerald Forest ──
-    // Light mode: soft, dreamy greens on warm cream
-    // Dark mode: deep, vivid aurora on dark slate
-    vec3 c1_light = vec3(0.18, 0.52, 0.38);  // emerald-600
-    vec3 c2_light = vec3(0.32, 0.62, 0.45);  // emerald-400
-    vec3 c3_light = vec3(0.55, 0.72, 0.42);  // warm green accent
-
-    vec3 c1_dark = vec3(0.12, 0.62, 0.45);   // vivid emerald
-    vec3 c2_dark = vec3(0.08, 0.42, 0.55);   // teal shift
-    vec3 c3_dark = vec3(0.25, 0.75, 0.38);   // bright green accent
-
-    vec3 c1 = mix(c1_light, c1_dark, u_dark);
-    vec3 c2 = mix(c2_light, c2_dark, u_dark);
-    vec3 c3 = mix(c3_light, c3_dark, u_dark);
+    // ── Color palette — Sand/Amber ──
+    vec3 c1 = vec3(0.788, 0.667, 0.447);  /* warmSand  #C9AA72 */
+    vec3 c2 = vec3(0.067, 0.067, 0.063);  /* deepWarm  #111110 */
+    vec3 c3 = vec3(0.886, 0.800, 0.604);  /* softCream #E2CC9A */
 
     // Mix colors based on noise
     vec3 col = vec3(0.0);
@@ -109,12 +99,12 @@ const FRAGMENT_SHADER = `
     vig = smoothstep(0.0, 0.7, vig);
     col *= vig;
 
-    // Opacity — base intensity differs by mode
-    float baseAlpha = mix(0.09, 0.18, u_dark);
+    // Opacity — extremely subtle base intensity to prevent cyber neon glow
+    float baseAlpha = mix(0.04, 0.08, u_dark);
     float alpha = length(col) * baseAlpha;
 
     // Mouse glow — soft radial highlight near cursor
-    float mouseGlow = exp(-mouseDist * mouseDist * 3.0) * 0.06 * mix(1.0, 1.5, u_dark);
+    float mouseGlow = exp(-mouseDist * mouseDist * 3.0) * 0.02 * mix(1.0, 1.5, u_dark);
     alpha += mouseGlow;
 
     // Scroll fade — dissolve as user scrolls past hero

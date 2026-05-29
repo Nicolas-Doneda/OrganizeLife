@@ -29,9 +29,11 @@ export function AuthProvider({ children }) {
                 budget_wants_percent,
                 budget_savings_percent
             });
-        } catch {
-            localStorage.removeItem('auth_token');
-            setUser(null);
+        } catch (err) {
+            if (err.response?.status === 401) {
+                localStorage.removeItem('auth_token');
+                setUser(null);
+            }
         } finally {
             setLoading(false);
         }
@@ -72,14 +74,14 @@ export function AuthProvider({ children }) {
         setUser(null);
     }
 
-    async function verify2fa(code) {
-        const response = await api.post('/auth/2fa/verify', { code });
+    async function verify2fa(code, remember = false) {
+        const response = await api.post('/auth/2fa/verify', { code, remember });
         localStorage.setItem('auth_token', response.data.data.token);
         setUser(response.data.data.user);
     }
 
-    async function recovery2fa(recovery_code) {
-        const response = await api.post('/auth/2fa/recovery', { recovery_code });
+    async function recovery2fa(recovery_code, remember = false) {
+        const response = await api.post('/auth/2fa/recovery', { recovery_code, remember });
         localStorage.setItem('auth_token', response.data.data.token);
         setUser(response.data.data.user);
     }

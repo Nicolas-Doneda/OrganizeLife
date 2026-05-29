@@ -20,7 +20,6 @@ class UpdateIncomeRequest extends FormRequest
         return [
             'name' => ['sometimes', 'string', 'max:255'],
             'amount' => ['sometimes', 'numeric', 'min:0.01'],
-            'type' => ['sometimes', 'string', 'in:fixed,variable'],
             'expected_date' => ['nullable', 'date'],
             'status' => ['sometimes', 'string', 'in:pending,received'],
             'wallet_id' => [

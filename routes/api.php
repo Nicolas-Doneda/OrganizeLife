@@ -35,6 +35,7 @@ Route::middleware('throttle:5,1')->group(function () {
     // Google Socialite endpoints
     Route::get('/auth/google/url', [\App\Http\Controllers\Api\GoogleAuthController::class, 'getRedirectUrl']);
     Route::get('/auth/google/callback', [\App\Http\Controllers\Api\GoogleAuthController::class, 'handleCallback']);
+    Route::post('/auth/google/exchange', [\App\Http\Controllers\Api\GoogleAuthController::class, 'exchangeCode']);
 });
 
 //============================================================
@@ -55,7 +56,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
 //EXPLICAÇÃO: O middleware 'ability:*' garante que o token tem TODAS as abilities
 //Isso impede que o temp_token do 2FA (que só tem '2fa:verify') acesse essas rotas
-Route::middleware(['auth:sanctum', 'ability:*'])->group(function () {
+Route::middleware(['auth:sanctum', 'ability:*', 'throttle:60,1'])->group(function () {
 
     //AUTH - Rotas do usuário autenticado
     Route::prefix('auth')->group(function () {
@@ -105,6 +106,11 @@ Route::middleware(['auth:sanctum', 'ability:*'])->group(function () {
     //INCOMES (CRUD + receive)
     Route::apiResource('incomes', IncomeController::class);
     Route::patch('incomes/{id}/receive', [IncomeController::class, 'receive']);
+
+    //RECURRING INCOMES (CRUD + activate/deactivate)
+    Route::apiResource('recurring-incomes', \App\Http\Controllers\Api\RecurringIncomeController::class);
+    Route::patch('recurring-incomes/{id}/activate', [\App\Http\Controllers\Api\RecurringIncomeController::class, 'activate']);
+    Route::patch('recurring-incomes/{id}/deactivate', [\App\Http\Controllers\Api\RecurringIncomeController::class, 'deactivate']);
 
     //EVENTOS (CRUD + upcoming)
     //IMPORTANTE: rota customizada ANTES do apiResource para nao conflitar com {id}

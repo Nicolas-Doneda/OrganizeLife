@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import AppLayout from '../components/layouts/AppLayout';
 import api from '../services/api';
 import useSubmitGuard, { useActionGuard } from '../hooks/useSubmitGuard';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
 import {
     Plus,
     Check,
@@ -39,19 +40,7 @@ function formatCurrency(value) {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
 }
 
-// Helper: extrai 'YYYY-MM-DD' de qualquer formato de data
-function normalizeDate(dateStr) {
-    if (!dateStr) return '';
-    return String(dateStr).substring(0, 10);
-}
-
-// Helper: formata para exibicao 'DD/MM/AAAA'
-function formatDateBR(dateStr) {
-    const d = normalizeDate(dateStr);
-    if (!d || d.length < 10) return '';
-    const [y, m, dd] = d.split('-');
-    return `${dd}/${m}/${y}`;
-}
+import { normalizeDate, formatDateBR } from '../utils/date';
 
 export default function BillsPage() {
     const [bills, setBills] = useState([]);
@@ -70,15 +59,28 @@ export default function BillsPage() {
     const [editingBill, setEditingBill] = useState(null);
     const { isSubmitting, guard } = useSubmitGuard();
     const { isActionInProgress, guardAction } = useActionGuard();
+    const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, bill: null, variant: 'danger', title: '', description: '', choices: [] });
+    const [editConfirm, setEditConfirm] = useState({ isOpen: false, saveParams: null });
+
+    const activePeriodRef = useRef({ year, month });
+
+    useEffect(() => {
+        activePeriodRef.current = { year, month };
+    }, [year, month]);
 
     const fetchBills = useCallback(async () => {
+        const reqYear = year;
+        const reqMonth = month;
         setLoading(true);
         try {
             const [billsRes, catsRes, walRes] = await Promise.all([
-                api.get('/monthly-bills', { params: { year, month } }),
+                api.get('/monthly-bills', { params: { year: reqYear, month: reqMonth } }),
                 api.get('/categories'),
                 api.get('/wallets'),
             ]);
+            if (activePeriodRef.current.year !== reqYear || activePeriodRef.current.month !== reqMonth) {
+                return;
+            }
             setBills(billsRes.data.data);
             setTotals(billsRes.data.totals);
             setCategories(catsRes.data.data);
@@ -86,7 +88,9 @@ export default function BillsPage() {
         } catch {
             // silently handle
         } finally {
-            setLoading(false);
+            if (activePeriodRef.current.year === reqYear && activePeriodRef.current.month === reqMonth) {
+                setLoading(false);
+            }
         }
     }, [year, month]);
 
@@ -121,24 +125,64 @@ export default function BillsPage() {
         });
     }
 
-    async function handleDelete(bill) {
-        let deleteAll = false;
-        let deleteRecurring = false;
-
+    function openDeleteConfirm(bill) {
         if (bill.installment_group_id) {
-            const result = window.confirm('Esta é uma conta parcelada.\n\nClique em OK para excluir esta e TODAS AS PRÓXIMAS parcelas.\nClique em Cancelar para excluir APENAS ESTA parcela (O valor das outras será mantido).');
-            if (result) {
-                deleteAll = true;
-            } else {
-                const confirmJustOne = window.confirm('Tem certeza que deseja excluir APENAS ESTA parcela?');
-                if (!confirmJustOne) return;
-            }
+            setDeleteConfirm({
+                isOpen: true,
+                bill,
+                variant: 'choice',
+                title: 'Excluir Conta Parcelada',
+                description: 'Esta é uma conta parcelada. Como deseja proceder com a exclusão?',
+                choices: [
+                    {
+                        label: 'Excluir apenas esta parcela',
+                        description: 'Mantém as próximas parcelas e remove apenas este lançamento.',
+                        variant: 'secondary',
+                        onClick: () => executeDelete(bill, { deleteAll: false })
+                    },
+                    {
+                        label: 'Excluir esta e as próximas',
+                        description: 'Remove esta parcela e todas as parcelas futuras deste parcelamento.',
+                        variant: 'danger',
+                        onClick: () => executeDelete(bill, { deleteAll: true })
+                    }
+                ]
+            });
         } else if (bill.recurring_bill_id) {
-            deleteRecurring = window.confirm('Esta é uma conta frequente (recorrente).\n\nDeseja cancelar também a "Assinatura" para que esta conta NÃO SEJA MAIS GERADA nos próximos meses?\n\n(OK = Cancelar assinatura e deletar mês atual | Cancelar = Deletar apenas mês atual)');
+            setDeleteConfirm({
+                isOpen: true,
+                bill,
+                variant: 'choice',
+                title: 'Excluir Conta Recorrente',
+                description: 'Esta é uma conta recorrente. Deseja cancelar também a assinatura mensal?',
+                choices: [
+                    {
+                        label: 'Remover só este mês',
+                        description: 'A recorrência continua gerando os próximos meses.',
+                        variant: 'secondary',
+                        onClick: () => executeDelete(bill, { deleteRecurring: false })
+                    },
+                    {
+                        label: 'Cancelar recorrência também',
+                        description: 'Remove este mês e impede novos lançamentos automáticos.',
+                        variant: 'danger',
+                        onClick: () => executeDelete(bill, { deleteRecurring: true })
+                    }
+                ]
+            });
         } else {
-            if (!window.confirm('Excluir esta conta?')) return;
+            setDeleteConfirm({
+                isOpen: true,
+                bill,
+                variant: 'danger',
+                title: 'Excluir Conta',
+                description: `Deseja mesmo remover a conta "${bill.name_snapshot}"? Esta ação não pode ser desfeita.`,
+                choices: []
+            });
         }
+    }
 
+    async function executeDelete(bill, { deleteAll = false, deleteRecurring = false }) {
         try {
             await api.delete(`/monthly-bills/${bill.id}`, {
                 params: { 
@@ -148,15 +192,32 @@ export default function BillsPage() {
             });
             fetchBills();
         } catch (err) { console.error('Erro:', err); }
+        setDeleteConfirm({ isOpen: false, bill: null, variant: 'danger', title: '', description: '', choices: [] });
     }
 
+    const handleConfirmSimpleDelete = () => {
+        if (deleteConfirm.bill) {
+            executeDelete(deleteConfirm.bill, {});
+        }
+    };
+
     async function handleSave({ payload, isRecurring, isInstallment, installmentMath }) {
+        if (editingBill && editingBill.installment_group_id) {
+            setEditConfirm({
+                isOpen: true,
+                saveParams: { payload, isRecurring, isInstallment, installmentMath }
+            });
+            return;
+        }
+        await executeSave({ payload, isRecurring, isInstallment, installmentMath, updateAll: false });
+    }
+
+    async function executeSave({ payload, isRecurring, isInstallment, installmentMath, updateAll = false }) {
         await guard(async () => {
             try {
                 if (editingBill) {
                     let recurringId = payload.recurring_bill_id || editingBill.recurring_bill_id;
 
-                    // Se marcou para ser recorrente, mas a conta original NÃO era
                     if (isRecurring && !editingBill.recurring_bill_id) {
                         const dueDay = parseInt(payload.due_day) || 1;
                         const recurringRes = await api.post('/recurring-bills', {
@@ -168,7 +229,6 @@ export default function BillsPage() {
                         recurringId = recurringRes.data.data.id;
                     }
 
-                    // Se desmarcou recorrente de uma conta que ERA recorrente
                     if (!isRecurring && editingBill.recurring_bill_id) {
                         recurringId = null;
                     }
@@ -179,12 +239,6 @@ export default function BillsPage() {
                         dueDate = `${year}-${String(month).padStart(2, '0')}-${String(dueDay).padStart(2, '0')}`;
                     }
 
-                    let updateAll = false;
-                    if (editingBill.installment_group_id) {
-                        updateAll = window.confirm('Deseja aplicar a Conta/Categoria escrita também para as PRÓXIMAS parcelas deste parcelamento?\n(Clique em OK para aplicar para as próximas, ou Cancelar para alterar apenas esta).');
-                    }
-
-                    // Editar conta existente
                     await api.put(`/monthly-bills/${editingBill.id}`, {
                         ...payload,
                         due_date: dueDate,
@@ -195,7 +249,6 @@ export default function BillsPage() {
                         update_all_installments: updateAll ? 1 : 0
                     });
                 } else if (isRecurring) {
-                    // Criar recorrente: salva em recurring_bills E cria a primeira monthly_bill
                     const dueDay = parseInt(payload.due_day) || 1;
                     const recurringRes = await api.post('/recurring-bills', {
                         name: payload.name_snapshot,
@@ -204,7 +257,6 @@ export default function BillsPage() {
                         category_id: payload.category_id || null,
                     });
 
-                    // Criar a monthly_bill deste mes vinculada a recorrente
                     const dueDate = `${year}-${String(month).padStart(2, '0')}-${String(dueDay).padStart(2, '0')}`;
                     await api.post('/monthly-bills', {
                         name_snapshot: payload.name_snapshot,
@@ -218,7 +270,6 @@ export default function BillsPage() {
                         wallet_id: payload.wallet_id || null,
                     });
                 } else {
-                    // Criar conta avulsa ou parcelada
                     let finalAmount = parseFloat(payload.expected_amount) || 0;
 
                     if (isInstallment && installmentMath === 'total_value') {
@@ -277,7 +328,7 @@ export default function BillsPage() {
     const CATEGORY_COLORS = {
         gray: 'var(--color-accent-400)', red: 'var(--color-danger-500)', orange: 'var(--color-warning-600)', yellow: 'var(--color-warning-500)',
         green: 'var(--color-success-500)', teal: 'var(--color-primary-400)', blue: 'var(--color-primary-500)', indigo: 'var(--color-primary-600)',
-        purple: 'var(--color-accent-500)', pink: 'var(--color-danger-400)',
+        purple: 'var(--color-accent-500)', pink: 'var(--color-danger-500)',
         rose: '#e11d48', amber: '#d97706', emerald: '#059669', cyan: '#0891b2', sky: '#0284c7', violet: '#7c3aed',
     };
 
@@ -291,137 +342,198 @@ export default function BillsPage() {
 
     return (
         <AppLayout>
-            {/* Header */}
-            <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading)' }}>
-                        Contas
-                    </h1>
-                    <p className="text-sm mt-1" style={{ color: 'var(--text-tertiary)' }}>
-                        {MONTH_NAMES[month]} {year}
-                    </p>
-                </div>
+            {/* Contas Header */}
+            <div className="mb-8 pb-6 border-b border-[var(--border-primary)]">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h1 className="text-3xl font-extrabold tracking-tight text-[var(--text-primary)] font-heading">
+                            Contas
+                        </h1>
+                        <p className="text-sm text-[var(--text-tertiary)] mt-1 font-medium">
+                            Controle vencimentos, pagamentos e despesas do mês.
+                        </p>
+                    </div>
 
-                <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1 bg-[var(--bg-card)] rounded-xl p-1 shadow-sm ring-1 ring-[var(--border-primary)]">
-                        <button onClick={prevMonth} className="flex h-9 w-9 items-center justify-center rounded-lg transition-all hover:bg-[var(--bg-hover)] active:scale-95 text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
-                            <ChevronLeft size={18} />
-                        </button>
-                        <span className="min-w-[130px] text-center text-sm font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>
-                            {MONTH_NAMES[month]} {year}
-                        </span>
-                        <button onClick={nextMonth} className="flex h-9 w-9 items-center justify-center rounded-lg transition-all hover:bg-[var(--bg-hover)] active:scale-95 text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
-                            <ChevronRight size={18} />
+                    <div className="flex items-center gap-3">
+                        {/* Seletor de período */}
+                        <div className="flex items-center gap-1.5 bg-[var(--bg-secondary)] rounded-lg p-1 border border-[var(--border-primary)]">
+                            <button onClick={prevMonth} className="flex h-7 w-7 items-center justify-center rounded transition-all hover:bg-[var(--bg-hover)] active:scale-95 text-[var(--text-secondary)] hover:text-[var(--text-primary)]" title="Mês anterior">
+                                <ChevronLeft size={14} />
+                            </button>
+                            <span className="min-w-[90px] text-center text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
+                                {MONTH_NAMES[month].slice(0, 3)} {year}
+                            </span>
+                            <button onClick={nextMonth} className="flex h-7 w-7 items-center justify-center rounded transition-all hover:bg-[var(--bg-hover)] active:scale-95 text-[var(--text-secondary)] hover:text-[var(--text-primary)]" title="Próximo mês">
+                                <ChevronRight size={14} />
+                            </button>
+                        </div>
+                        <button onClick={openCreate} className="btn-primary px-4 py-2 text-xs font-semibold tracking-wide active:scale-95 flex items-center gap-1.5">
+                            <Plus size={14} /> Nova Despesa
                         </button>
                     </div>
-                    <button onClick={openCreate} className="btn-primary px-5 py-2.5 active:scale-95">
-                        <Plus size={18} /> Nova Conta
-                    </button>
                 </div>
             </div>
 
-            {/* Summary Cards */}
-            <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <MiniCard label="Previsto" value={formatCurrency(calculatedTotals.expected)} />
-                <MiniCard label="Pago" value={formatCurrency(calculatedTotals.paid)} color="var(--color-success-600)" />
-                <MiniCard label="Pendente" value={formatCurrency(calculatedTotals.pending)} color="var(--color-warning-600)" />
-                <MiniCard label="Atrasado" value={formatCurrency(calculatedTotals.overdue)} color="var(--color-danger-600)" />
+            {/* Resumos de Contas (Metric Cards) */}
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-8">
+                <div className="rounded-xl border border-[var(--border-primary)] bg-[var(--bg-card)] p-5 shadow-[var(--shadow-sm)]">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] flex items-center gap-1.5">
+                        <span className="h-1.5 w-1.5 rounded-full bg-[var(--text-tertiary)]"></span>
+                        Previsto
+                    </span>
+                    <p className="mt-2 text-2xl font-bold tracking-tight text-[var(--text-primary)] tabular-nums">
+                        {formatCurrency(calculatedTotals.expected)}
+                    </p>
+                </div>
+                <div className="rounded-xl border border-[var(--border-primary)] bg-[var(--bg-card)] p-5 shadow-[var(--shadow-sm)]">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-success-600 flex items-center gap-1.5">
+                        <span className="h-1.5 w-1.5 rounded-full bg-success-500"></span>
+                        Pago
+                    </span>
+                    <p className="mt-2 text-2xl font-bold tracking-tight text-success-600 tabular-nums">
+                        {formatCurrency(calculatedTotals.paid)}
+                    </p>
+                </div>
+                <div className="rounded-xl border border-[var(--border-primary)] bg-[var(--bg-card)] p-5 shadow-[var(--shadow-sm)]">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-warning-600 dark:text-warning-300 flex items-center gap-1.5">
+                        <span className="h-1.5 w-1.5 rounded-full bg-warning-500"></span>
+                        Pendente
+                    </span>
+                    <p className="mt-2 text-2xl font-bold tracking-tight text-warning-600 dark:text-warning-300 tabular-nums">
+                        {formatCurrency(calculatedTotals.pending)}
+                    </p>
+                </div>
+                <div className="rounded-xl border border-[var(--border-primary)] bg-[var(--bg-card)] p-5 shadow-[var(--shadow-sm)]">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-danger-600 dark:text-danger-500 flex items-center gap-1.5">
+                        <span className="h-1.5 w-1.5 rounded-full bg-danger-500"></span>
+                        Atrasado
+                    </span>
+                    <p className="mt-2 text-2xl font-bold tracking-tight text-danger-600 dark:text-danger-500 tabular-nums">
+                        {formatCurrency(calculatedTotals.overdue)}
+                    </p>
+                </div>
             </div>
 
-            {/* Filters */}
+            {/* Filtros e Busca */}
             <div className="mb-4 flex flex-col gap-3 sm:flex-row">
                 <div className="relative flex-1">
-                    <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" />
+                    <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" />
                     <input
                         type="text"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Buscar conta..."
-                        className="w-full rounded-xl border bg-[var(--bg-input)] px-4 py-3 pl-11 text-sm text-[var(--text-primary)] outline-none transition-all focus:border-[var(--color-primary-500)] focus:ring-4 focus:ring-[var(--color-primary-500)]/10"
-                        style={{ borderColor: 'var(--border-primary)' }}
+                        placeholder="Buscar despesa..."
+                        className="w-full rounded-xl border bg-[var(--bg-card)] px-4 py-2.5 pl-11 text-xs text-[var(--text-primary)] outline-none border-[var(--border-primary)] transition-all focus:border-[var(--color-primary-500)]"
                     />
                 </div>
-                <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0 scrollbar-hide">
-                    {['all', 'pending', 'paid', 'overdue', 'canceled'].map((s) => (
-                        <button
-                            key={s}
-                            onClick={() => setFilterStatus(s)}
-                            className="shrink-0 rounded-xl px-4 py-2.5 text-sm font-medium transition-all active:scale-95"
-                            style={{
-                                backgroundColor: filterStatus === s ? 'var(--bg-active)' : 'var(--bg-card)',
-                                color: filterStatus === s ? 'var(--text-primary)' : 'var(--text-secondary)',
-                                boxShadow: filterStatus === s ? 'var(--shadow-sm)' : 'none',
-                                border: `1px solid ${filterStatus === s ? 'var(--border-secondary)' : 'var(--border-primary)'}`
-                            }}
-                        >
-                            {s === 'all' ? 'Todas' : STATUS_CONFIG[s]?.label}
-                        </button>
-                    ))}
+
+                {/* Segmented Control de Filtro de Status */}
+                <div className="inline-flex p-1 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-xl items-center overflow-x-auto max-w-full">
+                    {['all', 'pending', 'paid', 'overdue', 'canceled'].map((s) => {
+                        const isSel = filterStatus === s;
+                        return (
+                            <button 
+                                key={s} 
+                                onClick={() => setFilterStatus(s)} 
+                                className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all shrink-0 ${
+                                    isSel 
+                                        ? 'bg-[var(--bg-card)] text-[var(--text-primary)] shadow-xs border border-[var(--border-primary)]/40' 
+                                        : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'
+                                }`}
+                            >
+                                {s === 'all' ? 'Todas' : STATUS_CONFIG[s]?.label}
+                            </button>
+                        );
+                    })}
                 </div>
             </div>
 
-            {/* Category filter */}
+            {/* Filtro de Categorias (Chips) */}
             {categories.length > 0 && (
-                <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
+                <div className="mb-6 flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
                     <button
                         onClick={() => setFilterCategory('all')}
-                        className="shrink-0 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium border transition-colors"
+                        className="shrink-0 flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium border transition-all"
                         style={{
                             borderColor: filterCategory === 'all' ? 'var(--color-primary-500)' : 'var(--border-primary)',
-                            backgroundColor: filterCategory === 'all' ? 'var(--bg-active)' : 'transparent',
-                            color: filterCategory === 'all' ? 'var(--color-primary-600)' : 'var(--text-tertiary)',
+                            backgroundColor: filterCategory === 'all' ? 'color-mix(in srgb, var(--color-primary-500) 10%, var(--bg-card))' : 'var(--bg-card)',
+                            color: filterCategory === 'all' ? 'color-mix(in srgb, var(--color-primary-500) 90%, var(--text-primary))' : 'var(--text-secondary)',
                         }}
                     >
                         <Tag size={12} /> Todas
                     </button>
-                    {categories.map((cat) => (
-                        <button
-                            key={cat.id}
-                            onClick={() => setFilterCategory(String(cat.id))}
-                            className="shrink-0 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium border transition-colors"
-                            style={{
-                                borderColor: filterCategory === String(cat.id) ? (CATEGORY_COLORS[cat.color] || 'var(--color-accent-400)') : 'var(--border-primary)',
-                                backgroundColor: filterCategory === String(cat.id) ? `color-mix(in srgb, ${CATEGORY_COLORS[cat.color] || 'var(--color-accent-400)'} 15%, transparent)` : 'transparent',
-                                color: filterCategory === String(cat.id) ? (CATEGORY_COLORS[cat.color] || 'var(--color-accent-400)') : 'var(--text-tertiary)',
-                            }}
-                        >
-                            <div className="h-2 w-2 rounded-full" style={{ backgroundColor: CATEGORY_COLORS[cat.color] || 'var(--color-accent-400)' }} />
-                            {cat.name}
-                        </button>
-                    ))}
+                    {categories.map((cat) => {
+                        const isSelected = filterCategory === String(cat.id);
+                        const baseColor = CATEGORY_COLORS[cat.color] || 'var(--color-accent-400)';
+                        return (
+                            <button
+                                key={cat.id}
+                                onClick={() => setFilterCategory(String(cat.id))}
+                                className={`shrink-0 flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium border transition-all`}
+                                style={{
+                                    borderColor: isSelected ? baseColor : 'var(--border-primary)',
+                                    backgroundColor: isSelected ? `color-mix(in srgb, ${baseColor} 8%, var(--bg-card))` : 'var(--bg-card)',
+                                    color: isSelected ? `color-mix(in srgb, ${baseColor} 90%, var(--text-primary))` : 'var(--text-secondary)',
+                                }}
+                            >
+                                <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: baseColor }}></span>
+                                {cat.name}
+                            </button>
+                        );
+                    })}
                 </div>
             )}
 
-            {/* Bills List */}
+            {/* List */}
             {loading ? (
                 <div className="flex h-40 items-center justify-center">
-                    <div className="h-8 w-8 animate-spin rounded-full border-3 border-primary-200 border-t-primary-600" />
+                    <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--color-primary-300)] border-t-[var(--color-primary-600)]" />
                 </div>
             ) : filteredBills.length === 0 ? (
-                <div className="flex h-48 flex-col items-center justify-center rounded-2xl border bg-[var(--bg-card)] shadow-[var(--shadow-sm)]" style={{ borderColor: 'var(--border-primary)' }}>
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--bg-tertiary)]/50 mb-3">
-                        <Receipt size={24} className="text-[var(--text-tertiary)]" />
-                    </div>
-                    <p className="text-sm font-medium text-[var(--text-secondary)]">
-                        {bills.length === 0 ? 'Nenhuma conta neste mês' : 'Nenhuma conta encontrada'}
+                /* Empty state */
+                <div className="flex flex-col items-center justify-center text-center p-12 border border-dashed border-[var(--border-primary)] rounded-xl bg-[var(--bg-card)]/50 shadow-xs">
+                    <Receipt size={32} className="text-[var(--text-tertiary)] mb-4" />
+                    <h3 className="text-sm font-bold text-[var(--text-primary)] mb-1">Nenhum compromisso</h3>
+                    <p className="text-xs text-[var(--text-tertiary)] max-w-sm mb-4">
+                        {bills.length === 0
+                            ? 'Este mês não possui nenhuma conta de despesa lançada no sistema. Crie um registro para iniciar o controle.'
+                            : 'Nenhum resultado corresponde aos critérios de pesquisa informados.'}
                     </p>
+                    {bills.length === 0 && (
+                        <button onClick={openCreate} className="btn-primary py-2 px-4 text-xs font-semibold active:scale-95">
+                            Lançar Primeira Conta
+                        </button>
+                    )}
                 </div>
             ) : (
-                <div className="space-y-3">
-                    {filteredBills.map((bill) => (
-                        <BillCard
-                            key={bill.id}
-                            bill={bill}
-                            categoryColors={CATEGORY_COLORS}
-                            wallets={wallets}
-                            actionInProgress={isActionInProgress(bill.id)}
-                            onPay={() => handlePay(bill)}
-                            onUndoPay={() => handleUndoPay(bill)}
-                            onCancel={() => handleCancel(bill)}
-                            onEdit={() => openEdit(bill)}
-                            onDelete={() => handleDelete(bill)}
-                        />
-                    ))}
+                /* LedgerList */
+                <div className="border border-[var(--border-primary)] rounded-xl bg-[var(--bg-card)] shadow-xs overflow-hidden relative">
+                    {/* Header virtual do Ledger */}
+                    <div className="hidden sm:flex items-center gap-4 bg-[var(--bg-secondary)]/50 px-6 py-3.5 text-xs font-semibold text-[var(--text-tertiary)] border-b border-[var(--border-primary)]">
+                        <div className="w-10 shrink-0 text-center">Status</div>
+                        <div className="w-24 shrink-0 sm:pl-4">Vencimento</div>
+                        <div className="flex-1">Descrição / Categoria</div>
+                        <div className="w-36 shrink-0">Conta / Carteira</div>
+                        <div className="w-40 shrink-0 text-right sm:pr-8">Valor</div>
+                        <div className="w-32 shrink-0"></div>
+                    </div>
+
+                    <div className="divide-y divide-[var(--border-primary)]">
+                        {filteredBills.map((bill) => (
+                            <BillCard
+                                key={bill.id}
+                                bill={bill}
+                                categoryColors={CATEGORY_COLORS}
+                                wallets={wallets}
+                                actionInProgress={isActionInProgress(bill.id)}
+                                onPay={() => handlePay(bill)}
+                                onUndoPay={() => handleUndoPay(bill)}
+                                onCancel={() => handleCancel(bill)}
+                                onEdit={() => openEdit(bill)}
+                                onDelete={() => openDeleteConfirm(bill)}
+                            />
+                        ))}
+                    </div>
                 </div>
             )}
 
@@ -433,143 +545,224 @@ export default function BillsPage() {
                 categories={categories}
                 wallets={wallets}
                 submitting={isSubmitting}
+                defaultYear={year}
+                defaultMonth={month}
+                onCategoryCreated={fetchBills}
+                onWalletCreated={fetchBills}
             />
-        </AppLayout >
+            <ConfirmDialog
+                isOpen={deleteConfirm.isOpen}
+                onClose={() => setDeleteConfirm({ isOpen: false, bill: null, variant: 'danger', title: '', description: '', choices: [] })}
+                title={deleteConfirm.title}
+                description={deleteConfirm.description}
+                variant={deleteConfirm.variant}
+                confirmLabel="Remover"
+                onConfirm={handleConfirmSimpleDelete}
+                choices={deleteConfirm.choices}
+            />
+
+            <ConfirmDialog
+                isOpen={editConfirm.isOpen}
+                onClose={() => setEditConfirm({ isOpen: false, saveParams: null })}
+                title="Editar Conta Parcelada"
+                description="Como deseja aplicar as alterações nesta conta parcelada?"
+                variant="choice"
+                choices={[
+                    {
+                        label: 'Alterar apenas esta parcela',
+                        description: 'Aplica os novos valores e categoria apenas a este mês.',
+                        variant: 'secondary',
+                        onClick: () => {
+                            executeSave({ ...editConfirm.saveParams, updateAll: false });
+                            setEditConfirm({ isOpen: false, saveParams: null });
+                        }
+                    },
+                    {
+                        label: 'Aplicar também às próximas',
+                        description: 'Aplica os novos valores e categoria a esta parcela e todas as futuras deste grupo.',
+                        variant: 'primary',
+                        onClick: () => {
+                            executeSave({ ...editConfirm.saveParams, updateAll: true });
+                            setEditConfirm({ isOpen: false, saveParams: null });
+                        }
+                    }
+                ]}
+            />
+        </AppLayout>
     );
 }
 
 /* ========== Sub-components ========== */
 
 function BillCard({ bill, categoryColors, wallets = [], actionInProgress = false, onPay, onUndoPay, onCancel, onEdit, onDelete }) {
-    const status = STATUS_CONFIG[bill.status] || STATUS_CONFIG.pending;
-    const catColor = bill.category ? (categoryColors[bill.category.color] || '#6b7280') : null;
+    const isPaid = bill.status === 'paid';
+    const isOverdue = bill.status === 'overdue';
+    const isCanceled = bill.status === 'canceled';
+    
+    const catColor = bill.category ? (categoryColors[bill.category.color] || '#6b7280') : 'var(--text-tertiary)';
     const walletObj = bill.wallet_id ? wallets.find(w => w.id === bill.wallet_id) : null;
 
     return (
-        <div
-            className="group flex items-center gap-4 rounded-2xl border px-5 py-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md bg-[var(--bg-card)]"
-            style={{ borderColor: 'var(--border-primary)' }}
-        >
-            {/* Checkbox / Status Icon */}
-            {bill.status === 'pending' ? (
-                <button onClick={onPay}
-                    disabled={actionInProgress}
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-300 hover:scale-110 hover:border-primary-500 hover:bg-primary-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                    style={{ borderColor: 'var(--border-secondary)' }} title="Marcar como paga">
-                    {actionInProgress ? <div className="h-3 w-3 animate-spin rounded-full border-2 border-[var(--color-primary-600)]/30 border-t-[var(--color-primary-600)]" /> : <Check size={14} className="opacity-0 transition-all duration-300 group-hover:opacity-100 scale-50 group-hover:scale-100" style={{ color: 'var(--color-primary-600)' }} />}
-                </button>
-            ) : (
-                <div
-                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all duration-300 ${bill.status === 'paid' ? 'cursor-pointer hover:opacity-80 hover:scale-105' : ''}`}
-                    style={{ backgroundColor: status.bg, color: status.color, opacity: actionInProgress ? 0.5 : 1 }}
-                    onClick={bill.status === 'paid' && !actionInProgress ? onUndoPay : undefined}
-                    title={bill.status === 'paid' ? "Desfazer pagamento" : ""}
-                >
-                    {actionInProgress ? <div className="h-3 w-3 animate-spin rounded-full border-2 border-current/30 border-t-current" /> : (
-                        <>
-                            {bill.status === 'paid' && <Check size={14} />}
-                            {bill.status === 'overdue' && <AlertTriangle size={14} />}
-                            {bill.status === 'canceled' && <X size={14} />}
-                        </>
-                    )}
-                </div>
-            )}
+        <div className={`group flex flex-col sm:flex-row sm:items-center gap-4 px-6 py-4 transition-all hover:bg-[var(--bg-hover)]/30 relative bg-[var(--bg-card)] border-l-2 ${
+            isPaid 
+                ? 'border-l-[var(--color-success-500)]/60 opacity-80' 
+                : isOverdue 
+                    ? 'border-l-[var(--color-danger-500)] bg-[var(--color-danger-50)]/5 dark:bg-[var(--color-danger-950)]/5' 
+                    : isCanceled 
+                        ? 'border-l-[var(--text-tertiary)]/30 opacity-60' 
+                        : 'border-l-[var(--color-warning-500)]/60'
+        }`}>
+            {/* Status Checkbox */}
+            <div className="w-10 shrink-0 flex items-center justify-center z-10">
+                {isPaid ? (
+                    <button 
+                        onClick={() => !actionInProgress && onUndoPay()} 
+                        disabled={actionInProgress}
+                        className="flex h-5 w-5 items-center justify-center rounded border border-[var(--color-success-500)] bg-[var(--color-success-50)] dark:bg-[var(--color-success-500)]/10 text-[var(--color-success-600)] transition-all hover:scale-95 disabled:opacity-50"
+                        title="Estornar pagamento"
+                    >
+                        {actionInProgress ? (
+                            <div className="h-2.5 w-2.5 animate-spin rounded-full border-2 border-current/30 border-t-current" />
+                        ) : (
+                            <Check size={11} strokeWidth={3.5} />
+                        )}
+                    </button>
+                ) : isCanceled ? (
+                    <div className="flex h-5 w-5 items-center justify-center rounded border border-[var(--border-primary)] bg-[var(--bg-secondary)] text-[var(--text-tertiary)] opacity-60">
+                        <X size={10} strokeWidth={3.5} />
+                    </div>
+                ) : (
+                    <button 
+                        onClick={() => !actionInProgress && onPay()} 
+                        disabled={actionInProgress}
+                        className={`flex h-5 w-5 items-center justify-center rounded border transition-all hover:scale-95 disabled:opacity-50 ${
+                            isOverdue 
+                                ? 'border-[var(--color-danger-500)] bg-[var(--color-danger-50)] dark:bg-[var(--color-danger-950)]/40 text-[var(--color-danger-600)] hover:border-[var(--color-danger-500)]' 
+                                : 'border-[var(--border-primary)] hover:border-[var(--color-primary-500)] hover:bg-[var(--bg-hover)]'
+                        }`}
+                        title="Confirmar pagamento"
+                    >
+                        {actionInProgress ? (
+                            <div className="h-2.5 w-2.5 animate-spin rounded-full border-2 border-current/30 border-t-current" />
+                        ) : (
+                            <div className={`h-1.5 w-1.5 rounded-full opacity-35 group-hover:opacity-100 transition-opacity ${
+                                isOverdue ? 'bg-[var(--color-danger-500)]' : 'bg-[var(--text-tertiary)]'
+                            }`} />
+                        )}
+                    </button>
+                )}
+            </div>
 
-            {/* Info */}
-            <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                    <p className={`text-[15px] font-semibold tracking-tight truncate transition-colors duration-300 ${bill.status === 'paid' ? 'line-through opacity-60' : ''}`}
-                        style={{ color: bill.status === 'canceled' ? 'var(--text-tertiary)' : 'var(--text-primary)' }}>
+            {/* Data de Vencimento */}
+            <div className="w-24 shrink-0 text-xs text-[var(--text-secondary)] sm:pl-4 tabular-nums">
+                {formatDateBR(bill.due_date)}
+            </div>
+
+            {/* Descrição e Envelopes */}
+            <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                {/* Lado Esquerdo: Nome e Tags de Recorrência/Parcelamento */}
+                <div className="flex items-center gap-2 flex-wrap min-w-0">
+                    <p className={`text-sm font-semibold tracking-tight text-[var(--text-primary)] truncate ${isPaid ? 'line-through opacity-75' : ''}`}>
                         {bill.name_snapshot}
                     </p>
                     {bill.recurring_bill_id && (
-                        <div className="flex items-center justify-center h-5 w-5 rounded-full bg-[var(--color-primary-50)] text-[var(--color-primary-500)]" title="Recorrente">
-                            <Repeat size={10} strokeWidth={3} />
-                        </div>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-[var(--bg-secondary)] border border-[var(--border-primary)] text-[var(--text-secondary)] text-[10px] font-semibold px-2 py-0.5" title="Assinatura Mensal">
+                            <Repeat size={10} className="opacity-70" /> Recorrente
+                        </span>
                     )}
                     {bill.installment_group_id && (
-                        <span className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider" style={{ backgroundColor: 'var(--color-primary-50)', color: 'var(--color-primary-600)' }}>
-                            {bill.installment_index}/{bill.installment_total}
+                        <span 
+                            className="inline-flex items-center gap-1 border text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                            style={{
+                                backgroundColor: 'color-mix(in srgb, var(--color-primary-500) 8%, var(--bg-card))',
+                                borderColor: 'color-mix(in srgb, var(--color-primary-500) 25%, var(--bg-card))',
+                                color: 'color-mix(in srgb, var(--color-primary-500) 90%, var(--text-primary))',
+                            }}
+                            title="Despesa Parcelada"
+                        >
+                            Parcela {bill.installment_index}/{bill.installment_total}
                         </span>
                     )}
                 </div>
-                <div className="flex items-center gap-2.5 mt-1 text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>
-                    <div className="flex items-center gap-1">
-                        <Calendar size={12} className="opacity-70" />
-                        <span>{formatDateBR(bill.due_date)}</span>
-                    </div>
+
+                {/* Lado Direito: Categoria */}
+                <div className="flex items-center shrink-0 sm:pr-4">
+                    {/* Category styled as a clean chip */}
                     {bill.category && (
-                        <>
-                            <span className="w-1 h-1 rounded-full bg-[var(--border-secondary)]"></span>
-                            <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-md" style={{ backgroundColor: `${catColor}15`, color: catColor }}>
-                                {bill.category.name}
-                            </span>
-                        </>
-                    )}
-                    {walletObj && (
-                        <>
-                            <span className="w-1 h-1 rounded-full bg-[var(--border-secondary)]"></span>
-                            <span className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider" style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>
-                                <CreditCard size={10} />
-                                {walletObj.name}
-                            </span>
-                        </>
+                        <span 
+                            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold border border-[var(--border-primary)] bg-[var(--bg-secondary)]"
+                            style={{ 
+                                color: `color-mix(in srgb, ${catColor} 85%, var(--text-primary))` 
+                            }}
+                        >
+                            <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: catColor }}></span>
+                            {bill.category.name}
+                        </span>
                     )}
                 </div>
             </div>
 
-            {/* Amount */}
-            <div className="text-right shrink-0">
-                <p className="text-[15px] font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+            {/* Conta/Carteira */}
+            <div className="w-36 shrink-0 text-xs text-[var(--text-secondary)]">
+                {walletObj ? (
+                    <span className="inline-flex items-center gap-1 text-xs text-[var(--text-secondary)]">
+                        <CreditCard size={12} className="opacity-60" />
+                        {walletObj.name}
+                    </span>
+                ) : (
+                    <span className="text-[var(--text-tertiary)] italic text-xs">Saldo Geral</span>
+                )}
+            </div>
+
+            <div className="text-left sm:text-right shrink-0 w-40 sm:pr-8">
+                <p className={`text-sm font-semibold tracking-tight tabular-nums ${isPaid ? 'text-success-600' : isOverdue ? 'text-danger-600 dark:text-danger-500' : 'text-[var(--text-primary)]'}`}>
                     {formatCurrency(bill.expected_amount)}
                 </p>
-                {bill.paid_amount != null && bill.status === 'paid' && bill.paid_amount !== bill.expected_amount && (
-                    <p className="text-xs font-medium mt-0.5" style={{ color: 'var(--color-success-600)' }}>
+                {bill.paid_amount != null && isPaid && bill.paid_amount !== bill.expected_amount && (
+                    <p className="text-[10px] tracking-tight text-success-600 mt-0.5 tabular-nums">
                         Pago {formatCurrency(bill.paid_amount)}
                     </p>
                 )}
             </div>
 
-            {/* Status */}
-            <span className="hidden shrink-0 rounded-full px-3 py-1 text-xs font-semibold tracking-wide sm:inline-block border"
-                style={{ backgroundColor: status.bg, color: status.color, borderColor: `${status.color}30` }}>
-                {status.label}
-            </span>
-
-            {/* Actions */}
-            <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-                {bill.status === 'paid' && (
-                    <button onClick={onUndoPay} disabled={actionInProgress} className="flex items-center justify-center h-8 w-8 rounded-lg transition-colors hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-50 disabled:cursor-not-allowed" title="Desfazer">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            {/* Ações permanentes de baixa opacidade para segurança/não-poluição */}
+            <div className="flex items-center justify-start sm:justify-end gap-1 w-full sm:w-32 shrink-0 opacity-65 group-hover:opacity-100 transition-opacity duration-200 z-10">
+                {!isPaid && !isCanceled && (
+                    <button onClick={onPay} disabled={actionInProgress} className="flex items-center justify-center h-7 w-7 rounded-lg border border-[var(--border-primary)] transition-colors hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--color-success-600)] disabled:opacity-50" title="Marcar como Pago">
+                        <Check size={12} strokeWidth={2.5} />
+                    </button>
+                )}
+                {isPaid && (
+                    <button onClick={onUndoPay} disabled={actionInProgress} className="flex items-center justify-center h-7 w-7 rounded-lg border border-[var(--border-primary)] transition-colors hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-50" title="Desfazer Pagamento">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M3 7v6h6" />
                             <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
                         </svg>
                     </button>
                 )}
-                <button onClick={onEdit} className="flex items-center justify-center h-8 w-8 rounded-lg transition-colors hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--color-primary-600)]" title="Editar">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                {isCanceled && (
+                    <button onClick={onUndoPay} disabled={actionInProgress} className="flex items-center justify-center h-7 w-7 rounded-lg border border-[var(--border-primary)] transition-colors hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-50" title="Reativar Despesa (Pendente)">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M3 7v6h6" />
+                            <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
+                        </svg>
+                    </button>
+                )}
+                <button onClick={onEdit} className="flex items-center justify-center h-7 w-7 rounded-lg border border-[var(--border-primary)] transition-colors hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--color-primary-600)]" title="Editar">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                     </svg>
                 </button>
-                {bill.status === 'pending' && (
-                    <button onClick={onCancel} disabled={actionInProgress} className="flex items-center justify-center h-8 w-8 rounded-lg transition-colors hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] disabled:opacity-50 disabled:cursor-not-allowed" title="Cancelar">
-                        <X size={15} strokeWidth={2.5} />
+                {(bill.status === 'pending' || bill.status === 'overdue') && (
+                    <button onClick={onCancel} disabled={actionInProgress} className="flex items-center justify-center h-7 w-7 rounded-lg border border-[var(--border-primary)] transition-colors hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--color-warning-600)] disabled:opacity-50" title="Cancelar Despesa">
+                        <X size={12} strokeWidth={2.5} />
                     </button>
                 )}
-                <button onClick={onDelete} disabled={actionInProgress} className="flex items-center justify-center h-8 w-8 rounded-lg transition-colors hover:bg-red-50 text-[var(--text-secondary)] hover:text-[var(--color-danger-500)] disabled:opacity-50 disabled:cursor-not-allowed" title="Remover">
-                    <Trash2 size={15} strokeWidth={2.5} />
+                <button onClick={onDelete} disabled={actionInProgress} className="flex items-center justify-center h-7 w-7 rounded-lg border border-[var(--border-primary)] transition-colors hover:bg-red-50 text-[var(--text-secondary)] hover:text-[var(--color-danger-500)] disabled:opacity-50" title="Deletar">
+                    <Trash2 size={12} strokeWidth={2.5} />
                 </button>
             </div>
-        </div>
-    );
-}
-
-function MiniCard({ label, value, color }) {
-    return (
-        <div className="rounded-2xl border p-5 bg-[var(--bg-card)] transition-all duration-300 hover:-translate-y-1" style={{ borderColor: 'var(--border-primary)', boxShadow: 'var(--shadow-card)' }}>
-            <p className="text-xs font-semibold tracking-wide uppercase" style={{ color: 'var(--text-tertiary)' }}>{label}</p>
-            <p className="mt-2 text-2xl font-bold tracking-tight" style={{ color: color || 'var(--text-primary)', fontFamily: 'var(--font-heading)' }}>{value}</p>
         </div>
     );
 }

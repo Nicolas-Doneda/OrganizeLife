@@ -12,10 +12,10 @@ class Income extends Model
     protected $fillable = [
         'name',
         'amount',
-        'type',
         'expected_date',
         'status',
         'wallet_id',
+        'recurring_income_id',
     ];
 
     protected $casts = [
@@ -36,5 +36,10 @@ class Income extends Model
     public function wallet()
     {
         return $this->belongsTo(Wallet::class);
+    }
+
+    public function recurringIncome()
+    {
+        return $this->belongsTo(RecurringIncome::class);
     }
 }

@@ -1,5 +1,19 @@
-<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
-    <path d="M12 2L2 7l10 5 10-5-10-5z" />
-    <path d="M2 17l10 5 10-5" />
-    <path d="M2 12l10 5 10-5" />
+<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+    <!-- Rounded background in primary-700 / premium warm sand -->
+    <rect width="32" height="32" rx="8" fill="#7c623a" />
+    
+    <!-- Símbolo in primary-100 / warm creme -->
+    <g transform="translate(4, 4)" stroke="#f4efe2" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+        <!-- Outer track - 50% (Right side sweep) -->
+        <path d="M 12 3 A 9 9 0 0 1 12 21" />
+        
+        <!-- Middle track - 30% (Left side sweep) -->
+        <path d="M 12 6 A 6 6 0 0 0 12 18" />
+        
+        <!-- Inner track - 20% (Right side sweep) -->
+        <path d="M 12 9 A 3 3 0 0 1 12 15" />
+        
+        <!-- Nucleus dot -->
+        <circle cx="12" cy="12" r="1.2" fill="#f4efe2" stroke="none" />
+    </g>
 </svg>

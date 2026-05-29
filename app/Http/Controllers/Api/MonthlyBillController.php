@@ -8,6 +8,7 @@ use App\Http\Requests\UpdateMonthlyBillRequest;
 use App\Models\MonthlyBill;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class MonthlyBillController extends Controller
 {
@@ -22,12 +23,22 @@ class MonthlyBillController extends Controller
         $year = $request->integer('year', now()->year);
         $month = $request->integer('month', now()->month);
 
-        $bills = $request->user()
-            ->monthlyBills()
-            ->with(['category', 'recurringBill'])
-            ->forMonth($year, $month)
-            ->orderBy('due_date')
-            ->get();
+        // Self-Healing: transita contas vencidas de pending para overdue automaticamente
+        // Usamos exists() para evitar escritas desnecessárias no banco de dados em endpoints GET (P1)
+        $hasOverdue = $request->user()->monthlyBills()
+            ->where('status', MonthlyBill::STATUS_PENDING)
+            ->where('due_date', '<', now()->toDateString())
+            ->exists();
+
+        if ($hasOverdue) {
+            $request->user()->monthlyBills()
+                ->where('status', MonthlyBill::STATUS_PENDING)
+                ->where('due_date', '<', now()->toDateString())
+                ->update(['status' => MonthlyBill::STATUS_OVERDUE]);
+        }
+
+        // Obtém contas reais + virtuais
+        $bills = $request->user()->getMonthlyBillsWithVirtual($year, $month);
 
         //EXPLICAÇÃO: Calcula totais para exibir no frontend
         //Usamos o Collection do Laravel para calcular tudo em memória
@@ -68,42 +79,45 @@ class MonthlyBillController extends Controller
             $installmentsCount = $data['installments_count'];
             $groupId = 'inst_' . uniqid() . '_' . now()->timestamp;
             $startDate = \Carbon\Carbon::parse($data['due_date']);
-            
-            $billsToCreate = [];
-            $firstBill = null;
 
-            for ($i = 1; $i <= $installmentsCount; $i++) {
-                // Clona a data base e adiciona meses sem estourar dias (ex: 31 Jan -> 28 Fev)
-                $currentDate = $startDate->copy()->addMonthsNoOverflow($i - 1);
-                
-                $billData = $data; // Copia os dados validados (nome, valor, notas, wallet_id, etc)
-                
-                // Sobrescreve dados específicos da parcela
-                $billData['year'] = $currentDate->year;
-                $billData['month'] = $currentDate->month;
-                $billData['due_date'] = $currentDate->format('Y-m-d');
-                $billData['source_uid'] = "installment_{$groupId}_{$i}";
-                
-                $billData['installment_group_id'] = $groupId;
-                $billData['installment_index'] = $i;
-                $billData['installment_total'] = $installmentsCount;
+            $firstBill = DB::transaction(function () use ($user, $data, $installmentsCount, $groupId, $startDate) {
+                $firstBill = null;
 
-                // Regra de Overdue (só se a data já passou e não é hoje)
-                if ($currentDate->isPast() && !$currentDate->isToday()) {
-                    $billData['status'] = MonthlyBill::STATUS_OVERDUE;
-                } else {
-                    $billData['status'] = MonthlyBill::STATUS_PENDING;
+                for ($i = 1; $i <= $installmentsCount; $i++) {
+                    // Clona a data base e adiciona meses sem estourar dias (ex: 31 Jan -> 28 Fev)
+                    $currentDate = $startDate->copy()->addMonthsNoOverflow($i - 1);
+                    
+                    $billData = $data; // Copia os dados validados (nome, valor, notas, wallet_id, etc)
+                    
+                    // Sobrescreve dados específicos da parcela
+                    $billData['year'] = $currentDate->year;
+                    $billData['month'] = $currentDate->month;
+                    $billData['due_date'] = $currentDate->format('Y-m-d');
+                    $billData['source_uid'] = "installment_{$groupId}_{$i}";
+                    
+                    $billData['installment_group_id'] = $groupId;
+                    $billData['installment_index'] = $i;
+                    $billData['installment_total'] = $installmentsCount;
+
+                    // Regra de Overdue (só se a data já passou e não é hoje)
+                    if ($currentDate->isPast() && !$currentDate->isToday()) {
+                        $billData['status'] = MonthlyBill::STATUS_OVERDUE;
+                    } else {
+                        $billData['status'] = MonthlyBill::STATUS_PENDING;
+                    }
+                    
+                    // Remove campos não permitidos no DB
+                    unset($billData['is_installment'], $billData['installments_count']);
+
+                    $createdBill = $user->monthlyBills()->create($billData);
+                    
+                    if ($i === 1) {
+                        $firstBill = $createdBill;
+                    }
                 }
-                
-                // Remove campos não permitidos no DB
-                unset($billData['is_installment'], $billData['installments_count']);
 
-                $createdBill = $user->monthlyBills()->create($billData);
-                
-                if ($i === 1) {
-                    $firstBill = $createdBill;
-                }
-            }
+                return $firstBill;
+            });
 
             $firstBill->load(['category', 'recurringBill']);
             
@@ -139,12 +153,9 @@ class MonthlyBillController extends Controller
     }
 
     //SHOW - Exibir uma conta mensal
-    public function show(Request $request, int $id): JsonResponse
+    public function show(Request $request, $id): JsonResponse
     {
-        $bill = $request->user()
-            ->monthlyBills()
-            ->with(['category', 'recurringBill'])
-            ->findOrFail($id);
+        $bill = $this->resolveBill($request, $id, false);
 
         return response()->json([
             'data' => $bill,
@@ -152,11 +163,9 @@ class MonthlyBillController extends Controller
     }
 
     //UPDATE - Atualizar conta mensal
-    public function update(UpdateMonthlyBillRequest $request, int $id): JsonResponse
+    public function update(UpdateMonthlyBillRequest $request, $id): JsonResponse
     {
-        $bill = $request->user()
-            ->monthlyBills()
-            ->findOrFail($id);
+        $bill = $this->resolveBill($request, $id, true);
 
         $validated = $request->validated();
         $updateAll = $request->boolean('update_all_installments', false);
@@ -197,6 +206,7 @@ class MonthlyBillController extends Controller
                 $request->user()->monthlyBills()
                     ->where('installment_group_id', $bill->installment_group_id)
                     ->where('installment_index', '>', $bill->installment_index)
+                    ->whereIn('status', [MonthlyBill::STATUS_PENDING, MonthlyBill::STATUS_OVERDUE])
                     ->update($updateData);
             }
         }
@@ -208,11 +218,9 @@ class MonthlyBillController extends Controller
     }
 
     //DESTROY - Deletar conta mensal (soft delete)
-    public function destroy(Request $request, int $id): JsonResponse
+    public function destroy(Request $request, $id): JsonResponse
     {
-        $bill = $request->user()
-            ->monthlyBills()
-            ->findOrFail($id);
+        $bill = $this->resolveBill($request, $id, true);
 
         $deleteAll = $request->boolean('delete_all_installments', false);
         $deleteRecurring = $request->boolean('delete_recurring', false);
@@ -246,15 +254,13 @@ class MonthlyBillController extends Controller
     //  Rota customizada: PATCH /api/monthly-bills/{id}/pay
     //  Aceita paid_amount opcional (se não enviar, usa expected_amount)
     //  Útil para o checklist: "clicou no check = pagou"
-    public function markAsPaid(Request $request, int $id): JsonResponse
+    public function markAsPaid(Request $request, $id): JsonResponse
     {
         $request->validate([
             'paid_amount' => ['nullable', 'numeric', 'min:0'],
         ]);
 
-        $bill = $request->user()
-            ->monthlyBills()
-            ->findOrFail($id);
+        $bill = $this->resolveBill($request, $id, true);
 
         $bill->markAsPaid($request->input('paid_amount'));
 
@@ -266,11 +272,9 @@ class MonthlyBillController extends Controller
 
     //MARK AS PENDING - Desfazer Pagamento
     //Uso: PATCH /api/monthly-bills/{id}/pending
-    public function markAsPending(Request $request, int $id): JsonResponse
+    public function markAsPending(Request $request, $id): JsonResponse
     {
-        $bill = $request->user()
-            ->monthlyBills()
-            ->findOrFail($id);
+        $bill = $this->resolveBill($request, $id, true);
 
         $bill->markAsPending();
 
@@ -282,11 +286,9 @@ class MonthlyBillController extends Controller
 
     //MARK AS OVERDUE - Marcar como atrasada
     //Uso: PATCH /api/monthly-bills/{id}/overdue
-    public function markAsOverdue(Request $request, int $id): JsonResponse
+    public function markAsOverdue(Request $request, $id): JsonResponse
     {
-        $bill = $request->user()
-            ->monthlyBills()
-            ->findOrFail($id);
+        $bill = $this->resolveBill($request, $id, true);
 
         $bill->markAsOverdue();
 
@@ -298,11 +300,9 @@ class MonthlyBillController extends Controller
 
     //CANCEL - Cancelar conta
     //Uso: PATCH /api/monthly-bills/{id}/cancel
-    public function cancel(Request $request, int $id): JsonResponse
+    public function cancel(Request $request, $id): JsonResponse
     {
-        $bill = $request->user()
-            ->monthlyBills()
-            ->findOrFail($id);
+        $bill = $this->resolveBill($request, $id, true);
 
         $bill->cancel();
 
@@ -310,5 +310,60 @@ class MonthlyBillController extends Controller
             'message' => 'Conta cancelada.',
             'data' => $bill->fresh(),
         ]);
+    }
+
+    /**
+     * Resolve um ID que pode ser real (integer) ou virtual (string virtual-RBID-YEAR-MONTH).
+     * Se for virtual e $persist for true, a conta é persistida no banco de dados.
+     */
+    private function resolveBill(Request $request, $id, bool $persist = true)
+    {
+        if (is_string($id) && str_starts_with($id, 'virtual-')) {
+            $parts = explode('-', $id);
+            $recurringBillId = (int) $parts[1];
+            $year = (int) $parts[2];
+            $month = (int) $parts[3];
+
+            $recurringBill = $request->user()->recurringBills()->findOrFail($recurringBillId);
+
+            $dueDay = min($recurringBill->due_day, \Carbon\Carbon::createFromDate($year, $month, 1)->endOfMonth()->day);
+            $dueDate = \Carbon\Carbon::createFromDate($year, $month, $dueDay)->toDateString();
+
+            $status = MonthlyBill::STATUS_PENDING;
+            if ($dueDate < now()->toDateString()) {
+                $status = MonthlyBill::STATUS_OVERDUE;
+            }
+
+            $billData = [
+                'recurring_bill_id' => $recurringBill->id,
+                'category_id' => $recurringBill->category_id,
+                'year' => $year,
+                'month' => $month,
+                'name_snapshot' => $recurringBill->name,
+                'expected_amount' => $recurringBill->expected_amount,
+                'due_date' => $dueDate,
+                'source_uid' => "recurring_{$recurringBill->id}_{$year}_{$month}",
+                'status' => $status,
+            ];
+
+            if ($persist) {
+                return $request->user()->monthlyBills()->create($billData);
+            } else {
+                $virtualBill = new MonthlyBill($billData);
+                $virtualBill->id = $id;
+                $virtualBill->incrementing = false;
+                
+                if ($recurringBill->category_id) {
+                    $virtualBill->setRelation('category', $recurringBill->category);
+                }
+                $virtualBill->setRelation('recurringBill', $recurringBill);
+                
+                $virtualBill->_virtual = true;
+                $virtualBill->_recurring = true;
+                return $virtualBill;
+            }
+        }
+
+        return $request->user()->monthlyBills()->findOrFail((int) $id);
     }
 }

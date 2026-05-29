@@ -186,13 +186,21 @@ class TwoFactorController extends Controller
         $user->tokens()->delete();
         $token = $user->createToken('auth_token')->plainTextToken;
 
-        return response()->json([
+        $response = response()->json([
             'message' => 'Verificação 2FA realizada com sucesso.',
             'data' => [
                 'user' => $user,
                 'token' => $token,
             ],
         ]);
+
+        if ($request->input('remember')) {
+            $cookieName = '2fa_trust_' . $user->id;
+            $cookieValue = hash_hmac('sha256', $user->id . '|' . $secret, config('app.key'));
+            $response->withCookie(cookie($cookieName, $cookieValue, 43200));
+        }
+
+        return $response;
     }
 
     //RECOVERY - Login usando código de recuperação
@@ -207,6 +215,12 @@ class TwoFactorController extends Controller
         ]);
 
         $user = $request->user();
+
+        if (!$user->two_factor_recovery_codes || !$user->hasTwoFactorEnabled()) {
+            return response()->json([
+                'message' => 'A autenticação de dois fatores não está ativa para esta conta.',
+            ], 400);
+        }
 
         $recoveryCodes = json_decode(
             decrypt($user->two_factor_recovery_codes),
@@ -235,7 +249,7 @@ class TwoFactorController extends Controller
         $user->tokens()->delete();
         $token = $user->createToken('auth_token')->plainTextToken;
 
-        return response()->json([
+        $response = response()->json([
             'message' => 'Login por recuperação realizado. Restam ' . count($recoveryCodes) . ' códigos.',
             'data' => [
                 'user' => $user,
@@ -243,6 +257,15 @@ class TwoFactorController extends Controller
                 'remaining_codes' => count($recoveryCodes),
             ],
         ]);
+
+        if ($request->input('remember') && $user->two_factor_secret) {
+            $cookieName = '2fa_trust_' . $user->id;
+            $secret = decrypt($user->two_factor_secret);
+            $cookieValue = hash_hmac('sha256', $user->id . '|' . $secret, config('app.key'));
+            $response->withCookie(cookie($cookieName, $cookieValue, 43200));
+        }
+
+        return $response;
     }
 
     //MÉTODOS PRIVADOS (helpers internos)

@@ -1,6 +1,7 @@
 import { NavLink, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import ThemeToggle from '../ui/ThemeToggle';
+import LogoMark from './LogoMark';
 import {
     LayoutDashboard,
     Receipt,
@@ -30,7 +31,7 @@ const navItems = [
 ];
 
 export default function Sidebar() {
-    const { user, avatar_url, logout } = useAuth();
+    const { user, logout } = useAuth();
     const navigate = useNavigate();
     const [collapsed, setCollapsed] = useState(false);
     const [mobileOpen, setMobileOpen] = useState(false);
@@ -86,11 +87,7 @@ export default function Sidebar() {
                                     boxShadow: '0 3px 10px -2px oklch(34% 0.090 149 / 0.22)',
                                 }}
                             >
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                                    <path d="M2 17l10 5 10-5" />
-                                    <path d="M2 12l10 5 10-5" />
-                                </svg>
+                                <LogoMark size={18} strokeColor="white" fillColor="white" strokeWidth="2.2" />
                             </div>
                             <span className="text-lg font-bold tracking-tight" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading)' }}>
                                 OrganizeLife
@@ -153,9 +150,9 @@ export default function Sidebar() {
 
                     {!collapsed && user && (
                         <div className="mb-2 flex items-center gap-3 rounded-xl px-3 py-2.5" style={{ backgroundColor: 'var(--bg-hover)' }}>
-                            {avatar_url && !avatar_url.includes('ui-avatars.com') ? (
+                            {user?.avatar_url && !user.avatar_url.includes('ui-avatars.com') ? (
                                 <img
-                                    src={avatar_url}
+                                    src={user.avatar_url}
                                     alt={user.name}
                                     className="h-9 w-9 shrink-0 rounded-full object-cover ring-2 ring-[var(--border-primary)]"
                                 />

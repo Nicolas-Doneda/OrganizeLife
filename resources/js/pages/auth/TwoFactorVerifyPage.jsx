@@ -12,6 +12,7 @@ export default function TwoFactorVerifyPage() {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [isRecoveryMode, setIsRecoveryMode] = useState(false);
+    const [remember, setRemember] = useState(false);
 
     async function handleSubmit(e) {
         e.preventDefault();
@@ -20,9 +21,9 @@ export default function TwoFactorVerifyPage() {
 
         try {
             if (isRecoveryMode) {
-                await recovery2fa(code);
+                await recovery2fa(code, remember);
             } else {
-                await verify2fa(code);
+                await verify2fa(code, remember);
             }
             navigate('/dashboard');
         } catch (err) {
@@ -34,33 +35,38 @@ export default function TwoFactorVerifyPage() {
 
     return (
         <AuthLayout>
-            <h2 className="mb-1 text-2xl font-bold tracking-tight" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading)' }}>
-                {isRecoveryMode ? 'Recuperação de Acesso' : 'Verificação em Duas Etapas'}
-            </h2>
-            <p className="mb-8 text-[15px]" style={{ color: 'var(--text-tertiary)' }}>
-                {isRecoveryMode 
-                    ? 'Insira um dos seus códigos de recuperação de emergência.'
-                    : 'Insira o código de 6 dígitos do seu aplicativo autenticador.'}
-            </p>
+            <div className="mb-6">
+                <span className="text-[9px] font-mono tracking-widest text-[var(--text-tertiary)] uppercase block mb-1">
+                    05 // Segurança
+                </span>
+                <h2 className="text-xl font-extrabold tracking-tight font-heading text-[var(--text-primary)]">
+                    {isRecoveryMode ? 'Código de Emergência' : 'Verificação de Identidade'}
+                </h2>
+                <p className="text-xs text-[var(--text-tertiary)]">
+                    {isRecoveryMode 
+                        ? 'Insira um dos seus códigos de recuperação impressos.'
+                        : 'Insira o código temporário de 6 dígitos gerado pelo seu app.'}
+                </p>
+            </div>
 
             {error && (
                 <div
-                    className="mb-5 flex items-center gap-2.5 rounded-xl border px-4 py-3 text-sm animate-in"
+                    className="mb-5 flex items-center gap-2.5 rounded-xl px-4 py-3 text-xs font-mono animate-in"
                     style={{
                         backgroundColor: 'var(--color-danger-50)',
-                        borderColor: 'var(--color-danger-500)',
+                        border: '2px double var(--color-danger-500)',
                         color: 'var(--color-danger-600)',
                     }}
                 >
-                    <AlertCircle size={16} className="shrink-0" />
+                    <AlertCircle size={14} className="shrink-0" />
                     <span>{error}</span>
                 </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                    <label className="mb-2 block text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
-                        {isRecoveryMode ? 'Código de Recuperação' : 'Código de 6 dígitos'}
+                    <label className="mb-2 block text-[10px] uppercase font-mono font-bold tracking-wider text-[var(--text-tertiary)]">
+                        {isRecoveryMode ? '01. Código de Recuperação' : '01. Código Verificador'}
                     </label>
                     <input
                         type="text"
@@ -68,9 +74,22 @@ export default function TwoFactorVerifyPage() {
                         onChange={(e) => setCode(e.target.value)}
                         placeholder={isRecoveryMode ? "XXXX-XXXX" : "123456"}
                         required
-                        className="input-base text-center text-xl tracking-widest font-mono"
+                        className="input-base text-center text-xl tracking-widest font-mono focus-ring"
                         maxLength={isRecoveryMode ? null : 6}
                     />
+                </div>
+
+                <div className="flex items-center gap-2 py-1">
+                    <input
+                        type="checkbox"
+                        id="remember"
+                        checked={remember}
+                        onChange={(e) => setRemember(e.target.checked)}
+                        className="h-4 w-4 rounded border-[var(--border-primary)] bg-[var(--bg-card)] text-[var(--color-primary-600)] focus:ring-[var(--color-primary-500)] focus:ring-offset-0 cursor-pointer"
+                    />
+                    <label htmlFor="remember" className="text-xs font-mono uppercase tracking-wider cursor-pointer select-none text-[var(--text-secondary)]">
+                        Confiar neste dispositivo por 30 dias
+                    </label>
                 </div>
 
                 <div className="flex justify-end">
@@ -81,7 +100,7 @@ export default function TwoFactorVerifyPage() {
                             setCode('');
                             setError('');
                         }}
-                        className="text-sm font-semibold transition-colors"
+                        className="text-[10px] font-mono uppercase font-bold tracking-wider transition-colors hover:underline"
                         style={{ color: 'var(--color-primary-600)' }}
                     >
                         {isRecoveryMode ? 'Usar código do autenticador' : 'Perdeu acesso ao aplicativo?'}
@@ -91,14 +110,14 @@ export default function TwoFactorVerifyPage() {
                 <button
                     type="submit"
                     disabled={loading || (!isRecoveryMode && code.length < 6)}
-                    className="btn-primary w-full py-3 text-[15px] disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="btn-primary w-full py-3 text-xs font-mono uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     {loading ? (
-                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                     ) : (
                         <>
-                            <ShieldCheck size={18} />
-                            Verificar
+                            <ShieldCheck size={14} />
+                            Confirmar Acesso
                         </>
                     )}
                 </button>

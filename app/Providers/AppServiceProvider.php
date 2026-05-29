@@ -25,6 +25,10 @@ class AppServiceProvider extends ServiceProvider
             return url("/reset-password?token={$token}&email={$notifiable->getEmailForPasswordReset()}");
         });
 
+        \App\Models\MonthlyBill::observe(\App\Observers\MonthlyBillObserver::class);
+        \App\Models\Income::observe(\App\Observers\IncomeObserver::class);
+        \App\Models\SavingDeposit::observe(\App\Observers\SavingDepositObserver::class);
+
         if (config('app.env') !== 'local') {
             URL::forceScheme('https');
             

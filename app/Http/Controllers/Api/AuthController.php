@@ -32,13 +32,25 @@ class AuthController extends Controller
             'password' => $request->input('password'),
         ]);
 
+        // Seed default categories for the user
+        $defaultCategories = [
+            ['name' => 'Alimentação', 'color' => 'orange', 'icon' => 'utensils', 'budget_group' => 'needs'],
+            ['name' => 'Moradia', 'color' => 'blue', 'icon' => 'home', 'budget_group' => 'needs'],
+            ['name' => 'Transporte', 'color' => 'emerald', 'icon' => 'car', 'budget_group' => 'needs'],
+            ['name' => 'Lazer', 'color' => 'rose', 'icon' => 'smile', 'budget_group' => 'wants'],
+            ['name' => 'Economias', 'color' => 'violet', 'icon' => 'piggy-bank', 'budget_group' => 'savings'],
+        ];
+        foreach ($defaultCategories as $category) {
+            $user->categories()->create($category);
+        }
+
         //EXPLICAÇÃO: 'auth_token' é o NOME do token (para identificar)
         //Um usuário pode ter vários tokens (desktop, celular, etc)
         //O nome ajuda a saber qual é qual
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
-            'message' => 'Conta criada com sucesso.',
+            'message' => 'Conta criada com sucesso e categorias básicas inicializadas.',
             'data' => [
                 'user' => $user,
                 'token' => $token,
@@ -87,19 +99,31 @@ class AuthController extends Controller
         //Retorna um token TEMPORÁRIO que só serve para verificar o código 2FA
         //Depois de verificar, aí sim gera o token real
         if ($user->hasTwoFactorEnabled()) {
-            //Token temporário com habilidades limitadas
-            $tempToken = $user->createToken('2fa_temp', ['2fa:verify'])->plainTextToken;
+            $cookieName = '2fa_trust_' . $user->id;
+            $trusted = false;
+            if ($request->hasCookie($cookieName)) {
+                $cookieValue = $request->cookie($cookieName);
+                $expectedHash = hash_hmac('sha256', $user->id . '|' . decrypt($user->two_factor_secret), config('app.key'));
+                if (hash_equals($expectedHash, (string)$cookieValue)) {
+                    $trusted = true;
+                }
+            }
 
-            return response()->json([
-                'message' => 'Verificação de dois fatores necessária.',
-                'requires_2fa' => true,
-                'data' => [
-                    'temp_token' => $tempToken,
-                ],
-            ], 200);
+            if (!$trusted) {
+                //Token temporário com habilidades limitadas
+                $tempToken = $user->createToken('2fa_temp', ['2fa:verify'])->plainTextToken;
+
+                return response()->json([
+                    'message' => 'Verificação de dois fatores necessária.',
+                    'requires_2fa' => true,
+                    'data' => [
+                        'temp_token' => $tempToken,
+                    ],
+                ], 200);
+            }
         }
 
-        //Login normal (sem 2FA)
+        //Login normal (sem 2FA ou se dispositivo confiável)
         //EXPLICAÇÃO: Deleta tokens antigos para segurança
         //Se o usuário logou em outro lugar, o token antigo é invalidado
         //Isso garante apenas UMA sessão ativa por vez
@@ -167,6 +191,19 @@ class AuthController extends Controller
         ]);
 
         $user = $request->user();
+
+        // Validar soma 100% dos limites do orçamento
+        if ($request->hasAny(['budget_needs_percent', 'budget_wants_percent', 'budget_savings_percent'])) {
+            $needs = $request->has('budget_needs_percent') ? (float) $request->input('budget_needs_percent') : (float) ($user->budget_needs_percent ?? 50);
+            $wants = $request->has('budget_wants_percent') ? (float) $request->input('budget_wants_percent') : (float) ($user->budget_wants_percent ?? 30);
+            $savings = $request->has('budget_savings_percent') ? (float) $request->input('budget_savings_percent') : (float) ($user->budget_savings_percent ?? 20);
+
+            if (abs(($needs + $wants + $savings) - 100.0) > 0.01) {
+                return response()->json([
+                    'message' => 'A soma das metas de orçamento (Essencial, Desejos e Poupança) deve ser exatamente 100%. Atualmente a soma é ' . ($needs + $wants + $savings) . '%.',
+                ], 422);
+            }
+        }
 
         if ($request->filled('name')) {
             $user->name = $request->input('name');

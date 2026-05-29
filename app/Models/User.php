@@ -153,7 +153,13 @@ class User extends Authenticatable implements MustVerifyEmail
     //Ou: URL padrão se não tiver avatar
     public function getAvatarUrl(): string
     {
-        if($this->avatar){
+        if ($this->avatar) {
+            if (str_starts_with($this->avatar, 'http://') || str_starts_with($this->avatar, 'https://')) {
+                return $this->avatar;
+            }
+            if (str_starts_with($this->avatar, '#')) {
+                return 'https://ui-avatars.com/api/?name=' . urlencode($this->name) . '&color=FFFFFF&background=' . str_replace('#', '', $this->avatar);
+            }
             return asset('storage/' . $this->avatar);
         }
 
@@ -164,5 +170,128 @@ class User extends Authenticatable implements MustVerifyEmail
     public function savingDeposits()
     {
         return $this->hasMany(SavingDeposit::class);
+    }
+
+    /**
+     * Retorna todas as contas mensais do usuário para o período, 
+     * injetando virtualmente previsões das contas recorrentes ativas.
+     */
+    public function getMonthlyBillsWithVirtual(int $year, int $month)
+    {
+        // 1. Busca contas reais do banco de dados
+        $bills = $this->monthlyBills()
+            ->with(['category', 'recurringBill'])
+            ->forMonth($year, $month)
+            ->get();
+
+        // 2. Busca contas recorrentes ativas
+        $activeRecurring = $this->recurringBills()
+            ->with('category')
+            ->where('active', true)
+            ->get();
+
+        $existingRecurringIds = $bills->pluck('recurring_bill_id')->filter()->toArray();
+
+        foreach ($activeRecurring as $recur) {
+            if (!in_array($recur->id, $existingRecurringIds)) {
+                $dueDay = min($recur->due_day, \Carbon\Carbon::createFromDate($year, $month, 1)->endOfMonth()->day);
+                $dueDate = \Carbon\Carbon::createFromDate($year, $month, $dueDay)->toDateString();
+
+                $status = MonthlyBill::STATUS_PENDING;
+                if ($dueDate < now()->toDateString()) {
+                    $status = MonthlyBill::STATUS_OVERDUE;
+                }
+
+                $virtualBill = new MonthlyBill([
+                    'recurring_bill_id' => $recur->id,
+                    'category_id' => $recur->category_id,
+                    'year' => $year,
+                    'month' => $month,
+                    'name_snapshot' => $recur->name,
+                    'expected_amount' => $recur->expected_amount,
+                    'due_date' => $dueDate,
+                    'status' => $status,
+                    'paid_amount' => null,
+                    'paid_at' => null,
+                ]);
+
+                // Define ID virtual contendo todas as variáveis necessárias para materialização posterior
+                $virtualBill->id = "virtual-{$recur->id}-{$year}-{$month}";
+                $virtualBill->incrementing = false;
+                
+                if ($recur->category_id) {
+                    $virtualBill->setRelation('category', $recur->category);
+                }
+                $virtualBill->setRelation('recurringBill', $recur);
+                
+                $virtualBill->_virtual = true;
+                $virtualBill->_recurring = true;
+
+                $bills->push($virtualBill);
+            }
+        }
+
+        return $bills->sortBy('due_date')->values();
+    }
+
+    public function recurringIncomes()
+    {
+        return $this->hasMany(RecurringIncome::class);
+    }
+
+    /**
+     * Retorna todas as rendas mensais do usuário para o período, 
+     * injetando virtualmente previsões das rendas recorrentes ativas.
+     */
+    public function getIncomesWithVirtual(int $year, int $month)
+    {
+        // 1. Busca rendas reais do banco de dados (eager loading wallet)
+        $incomes = $this->incomes()
+            ->with('wallet')
+            ->where(function ($query) use ($year, $month) {
+                $startDate = \Carbon\Carbon::createFromDate($year, $month, 1)->startOfMonth()->toDateString();
+                $endDate = \Carbon\Carbon::createFromDate($year, $month, 1)->endOfMonth()->toDateString();
+                $query->whereBetween('expected_date', [$startDate, $endDate]);
+            })
+            ->get();
+
+        // 2. Busca rendas recorrentes ativas
+        $activeRecurring = $this->recurringIncomes()
+            ->with('wallet')
+            ->where('active', true)
+            ->get();
+
+        $existingRecurringIds = $incomes->pluck('recurring_income_id')->filter()->toArray();
+
+        foreach ($activeRecurring as $recur) {
+            if (!in_array($recur->id, $existingRecurringIds)) {
+                $receiveDay = min($recur->receive_day, \Carbon\Carbon::createFromDate($year, $month, 1)->endOfMonth()->day);
+                $expectedDate = \Carbon\Carbon::createFromDate($year, $month, $receiveDay)->toDateString();
+
+                $virtualIncome = new Income([
+                    'recurring_income_id' => $recur->id,
+                    'wallet_id' => $recur->wallet_id,
+                    'name' => $recur->name,
+                    'amount' => $recur->amount,
+                    'expected_date' => $expectedDate,
+                    'status' => 'pending',
+                ]);
+
+                // Define ID virtual contendo todas as variáveis necessárias para materialização posterior
+                $virtualIncome->id = "virtual-{$recur->id}-{$year}-{$month}";
+                $virtualIncome->incrementing = false;
+                
+                if ($recur->wallet_id) {
+                    $virtualIncome->setRelation('wallet', $recur->wallet);
+                }
+                
+                $virtualIncome->_virtual = true;
+                $virtualIncome->_recurring = true;
+
+                $incomes->push($virtualIncome);
+            }
+        }
+
+        return $incomes->sortBy('expected_date')->values();
     }
 }

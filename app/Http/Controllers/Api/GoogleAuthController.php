@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Laravel\Socialite\Facades\Socialite;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\ValidationException;
 
 class GoogleAuthController extends Controller
@@ -44,7 +45,7 @@ class GoogleAuthController extends Controller
     }
 
     /**
-     * Lida com o Callback do Google e retorna o Token de acesso.
+     * Lida com o Callback do Google e redireciona com um código temporário de uso único.
      */
     public function handleCallback(Request $request)
     {
@@ -65,20 +66,17 @@ class GoogleAuthController extends Controller
                     'email' => $googleUser->getEmail(),
                     'google_id' => $googleUser->getId(),
                     'password' => Hash::make(Str::random(16)),
-                    'avatar' => cloneAvatar($googleUser->getAvatar()),
+                    'avatar' => $this->cloneAvatar($googleUser->getAvatar()),
                     'email_verified_at' => now(), // Assume o email do Google como verificado
                 ]);
-
             }
 
-            // Revoga tokens antigos caso exista a regra de 1 login
-            $user->tokens()->delete();
+            // Gera um código de uso único válido por 60 segundos
+            $exchangeCode = Str::random(40);
+            Cache::put('google_auth_code_' . $exchangeCode, $user->id, 60);
 
-            // Gera o Token
-            $token = $user->createToken('auth_token')->plainTextToken;
-
-            // Retorna redirecionando para a rota do React Router com o token na URL
-            $frontendUrl = env('APP_URL', 'http://127.0.0.1:8000') . '/google-callback?token=' . $token;
+            // Retorna redirecionando para a rota do React Router com o código de troca seguro na URL (S4)
+            $frontendUrl = env('APP_URL', 'http://127.0.0.1:8000') . '/google-callback?code=' . $exchangeCode;
             return redirect($frontendUrl);
 
         } catch (\Exception $e) {
@@ -86,9 +84,48 @@ class GoogleAuthController extends Controller
             return redirect($frontendErrorUrl);
         }
     }
-}
 
-function cloneAvatar($url) {
-    if (!$url) return null;
-    return $url; // Aqui estamos apenas passando a URL gerada pelo Google. Se necessário pode ser baixado pro storage interno.
+    /**
+     * Troca o código temporário do Google OAuth pelo token Sanctum final.
+     */
+    public function exchangeCode(Request $request)
+    {
+        $request->validate([
+            'code' => ['required', 'string'],
+        ]);
+
+        $code = $request->input('code');
+        $userId = Cache::pull('google_auth_code_' . $code);
+
+        if (!$userId) {
+            return response()->json([
+                'message' => 'Código de autenticação inválido ou expirado.',
+            ], 400);
+        }
+
+        $user = User::findOrFail($userId);
+
+        // Revoga tokens antigos caso exista a regra de 1 login
+        $user->tokens()->delete();
+
+        // Gera o token de acesso definitivo
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        return response()->json([
+            'message' => 'Autenticação concluída com sucesso.',
+            'data' => [
+                'user' => $user,
+                'token' => $token,
+            ],
+        ]);
+    }
+
+    /**
+     * Auxiliar para clonar imagem de perfil.
+     */
+    private function cloneAvatar($url)
+    {
+        if (!$url) return null;
+        return $url;
+    }
 }
