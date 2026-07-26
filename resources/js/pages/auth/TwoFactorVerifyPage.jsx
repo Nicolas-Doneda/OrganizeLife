@@ -36,13 +36,10 @@ export default function TwoFactorVerifyPage() {
     return (
         <AuthLayout>
             <div className="mb-6">
-                <span className="text-[9px] font-mono tracking-widest text-[var(--text-tertiary)] uppercase block mb-1">
-                    05 // Segurança
-                </span>
                 <h2 className="text-xl font-extrabold tracking-tight font-heading text-[var(--text-primary)]">
                     {isRecoveryMode ? 'Código de Emergência' : 'Verificação de Identidade'}
                 </h2>
-                <p className="text-xs text-[var(--text-tertiary)]">
+                <p className="text-xs text-[var(--text-tertiary)] mt-1">
                     {isRecoveryMode 
                         ? 'Insira um dos seus códigos de recuperação impressos.'
                         : 'Insira o código temporário de 6 dígitos gerado pelo seu app.'}
@@ -65,8 +62,8 @@ export default function TwoFactorVerifyPage() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                    <label className="mb-2 block text-[10px] uppercase font-mono font-bold tracking-wider text-[var(--text-tertiary)]">
-                        {isRecoveryMode ? '01. Código de Recuperação' : '01. Código Verificador'}
+                    <label className="mb-2 block text-xs font-semibold tracking-wide text-[var(--text-secondary)]">
+                        {isRecoveryMode ? 'Código de Recuperação' : 'Código Verificador'}
                     </label>
                     <input
                         type="text"

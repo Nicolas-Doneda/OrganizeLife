@@ -49,14 +49,11 @@ export default function LoginPage() {
     return (
         <AuthLayout>
             <div className="mb-6">
-                <span className="text-[9px] font-mono tracking-widest text-[var(--text-tertiary)] uppercase block mb-1">
-                    01 // Autenticação
-                </span>
                 <h2 className="text-xl font-extrabold tracking-tight" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading)' }}>
                     Bem-vindo de volta
                 </h2>
-                <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                    Acesse seu painel contábil para continuar
+                <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
+                    Acesse sua conta para continuar
                 </p>
             </div>
 
@@ -77,8 +74,8 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Email */}
                 <div>
-                    <label className="mb-2 block text-[10px] uppercase font-mono font-bold tracking-wider text-[var(--text-tertiary)]">
-                        01. Endereço de E-mail
+                    <label className="mb-2 block text-xs font-semibold tracking-wide text-[var(--text-secondary)]">
+                        Endereço de E-mail
                     </label>
                     <input
                         type="email"
@@ -86,19 +83,19 @@ export default function LoginPage() {
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="seu@email.com"
                         required
-                        className="input-base font-mono text-sm focus-ring"
+                        className="input-base text-sm focus-ring"
                     />
                 </div>
 
                 {/* Password */}
                 <div>
                     <div className="flex justify-between items-center mb-2">
-                        <label className="block text-[10px] uppercase font-mono font-bold tracking-wider text-[var(--text-tertiary)]">
-                            02. Senha de Acesso
+                        <label className="block text-xs font-semibold tracking-wide text-[var(--text-secondary)]">
+                            Senha de Acesso
                         </label>
                         <Link
                             to="/forgot-password"
-                            className="text-[10px] font-mono font-bold uppercase tracking-wider transition-colors hover:underline"
+                            className="text-xs font-semibold transition-colors hover:underline"
                             style={{ color: 'var(--color-primary-600)' }}
                         >
                             Esqueceu?

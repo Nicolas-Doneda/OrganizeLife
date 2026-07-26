@@ -57,26 +57,23 @@ export default function ResetPasswordPage() {
     return (
         <AuthLayout>
             <div className="mb-6">
-                <span className="text-[9px] font-mono tracking-widest text-[var(--text-tertiary)] uppercase block mb-1">
-                    04 // Redefinição
-                </span>
                 <h2 className="text-xl font-extrabold tracking-tight" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading)' }}>
                     Redefinir senha
                 </h2>
-                <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                    Escolha uma nova senha forte para sua segurança contábil
+                <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
+                    Escolha uma nova senha forte para sua segurança
                 </p>
             </div>
 
             {status === 'success' ? (
                 <div className="flex flex-col items-center justify-center space-y-4 py-4">
                     <CheckCircle2 size={40} style={{ color: 'var(--color-success-500)' }} />
-                    <p className="text-center text-xs font-mono tracking-wide leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                    <p className="text-center text-xs tracking-wide leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
                         {message}
                     </p>
                     <Link
                         to="/login"
-                        className="btn-primary mt-4 flex w-full justify-center py-3 text-xs font-mono uppercase tracking-widest"
+                        className="btn-primary mt-4 flex w-full justify-center py-3 text-xs font-semibold uppercase tracking-widest"
                     >
                         Fazer login agora
                     </Link>
@@ -86,7 +83,7 @@ export default function ResetPasswordPage() {
                     {/* Exibe erro */}
                     {status === 'error' && (
                         <div
-                            className="mb-5 flex items-center gap-2.5 rounded-xl px-4 py-3 text-xs font-mono animate-in"
+                            className="mb-5 flex items-center gap-2.5 rounded-xl px-4 py-3 text-xs animate-in"
                             style={{
                                 backgroundColor: 'var(--color-danger-50)',
                                 border: '2px double var(--color-danger-500)',
@@ -98,20 +95,17 @@ export default function ResetPasswordPage() {
                     )}
 
                     <div>
-                        <label className="mb-2 block text-[10px] uppercase font-mono font-bold tracking-wider text-[var(--text-tertiary)]">
-                            01. Nova Senha
+                        <label className="mb-2 block text-xs font-semibold tracking-wide text-[var(--text-secondary)]">
+                            Nova Senha
                         </label>
                         <div className="relative">
-                            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
-                                <Lock size={16} style={{ color: 'var(--text-tertiary)' }} />
-                            </div>
                             <input
                                 type={showPassword ? 'text' : 'password'}
                                 required
                                 minLength="8"
                                 value={form.password}
                                 onChange={(e) => setForm({ ...form, password: e.target.value })}
-                                className="input-base pl-11 pr-11 font-mono text-sm focus-ring"
+                                className="input-base pr-10 text-sm focus-ring"
                                 placeholder="********"
                             />
                             <button
@@ -126,23 +120,18 @@ export default function ResetPasswordPage() {
                     </div>
 
                     <div>
-                        <label className="mb-2 block text-[10px] uppercase font-mono font-bold tracking-wider text-[var(--text-tertiary)]">
-                            02. Confirmação de Senha
+                        <label className="mb-2 block text-xs font-semibold tracking-wide text-[var(--text-secondary)]">
+                            Confirmação de Senha
                         </label>
-                        <div className="relative">
-                            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
-                                <Lock size={16} style={{ color: 'var(--text-tertiary)' }} />
-                            </div>
-                            <input
-                                type={showPassword ? 'text' : 'password'}
-                                required
-                                minLength="8"
-                                value={form.password_confirmation}
-                                onChange={(e) => setForm({ ...form, password_confirmation: e.target.value })}
-                                className="input-base pl-11 font-mono text-sm focus-ring"
-                                placeholder="********"
-                            />
-                        </div>
+                        <input
+                            type={showPassword ? 'text' : 'password'}
+                            required
+                            minLength="8"
+                            value={form.password_confirmation}
+                            onChange={(e) => setForm({ ...form, password_confirmation: e.target.value })}
+                            className="input-base text-sm focus-ring"
+                            placeholder="********"
+                        />
                     </div>
 
                     <button

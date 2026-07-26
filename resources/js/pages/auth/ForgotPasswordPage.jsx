@@ -27,13 +27,10 @@ export default function ForgotPasswordPage() {
     return (
         <AuthLayout>
             <div className="mb-6">
-                <span className="text-[9px] font-mono tracking-widest text-[var(--text-tertiary)] uppercase block mb-1">
-                    03 // Recuperação
-                </span>
                 <h2 className="text-xl font-extrabold tracking-tight" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading)' }}>
                     Recuperar senha
                 </h2>
-                <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
                     Digite seu e-mail cadastrado para redefinir sua senha
                 </p>
             </div>
@@ -41,12 +38,12 @@ export default function ForgotPasswordPage() {
             {status === 'success' ? (
                 <div className="flex flex-col items-center justify-center space-y-4 py-4">
                     <CheckCircle2 size={40} style={{ color: 'var(--color-success-500)' }} />
-                    <p className="text-center text-xs font-mono tracking-wide leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                    <p className="text-center text-xs tracking-wide leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
                         {message}
                     </p>
                     <Link
                         to="/login"
-                        className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border py-3 text-xs font-mono uppercase tracking-wider transition-all hover:bg-[var(--bg-hover)] active:scale-[0.98]"
+                        className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border py-3 text-xs font-semibold uppercase tracking-wider transition-all hover:bg-[var(--bg-hover)] active:scale-[0.98]"
                         style={{ borderColor: 'var(--border-primary)', color: 'var(--text-primary)', backgroundColor: 'var(--bg-card)' }}
                     >
                         <ArrowLeft size={14} />
@@ -58,7 +55,7 @@ export default function ForgotPasswordPage() {
                     {/* Mensagem de Erro (se houver) */}
                     {status === 'error' && (
                         <div
-                            className="mb-5 flex items-center gap-2.5 rounded-xl px-4 py-3 text-xs font-mono animate-in"
+                            className="mb-5 flex items-center gap-2.5 rounded-xl px-4 py-3 text-xs animate-in"
                             style={{
                                 backgroundColor: 'var(--color-danger-50)',
                                 border: '2px double var(--color-danger-500)',
@@ -71,23 +68,18 @@ export default function ForgotPasswordPage() {
 
                     {/* Email Input */}
                     <div>
-                        <label htmlFor="email" className="mb-2 block text-[10px] uppercase font-mono font-bold tracking-wider text-[var(--text-tertiary)]">
-                            01. Endereço de E-mail
+                        <label htmlFor="email" className="mb-2 block text-xs font-semibold tracking-wide text-[var(--text-secondary)]">
+                            Endereço de E-mail
                         </label>
-                        <div className="relative">
-                            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
-                                <Mail size={16} style={{ color: 'var(--text-tertiary)' }} />
-                            </div>
-                            <input
-                                id="email"
-                                type="email"
-                                required
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                className="input-base pl-11 font-mono text-sm focus-ring"
-                                placeholder="seu@email.com"
-                            />
-                        </div>
+                        <input
+                            id="email"
+                            type="email"
+                            required
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            className="input-base text-sm focus-ring"
+                            placeholder="seu@email.com"
+                        />
                     </div>
 
                     {/* Submit Button */}

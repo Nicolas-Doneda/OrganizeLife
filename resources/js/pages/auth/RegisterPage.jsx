@@ -55,14 +55,11 @@ export default function RegisterPage() {
     return (
         <AuthLayout>
             <div className="mb-6">
-                <span className="text-[9px] font-mono tracking-widest text-[var(--text-tertiary)] uppercase block mb-1">
-                    02 // Novo Cadastro
-                </span>
                 <h2 className="text-xl font-extrabold tracking-tight" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading)' }}>
                     Criar sua conta
                 </h2>
-                <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                    Abra sua caderneta e organize suas finanças
+                <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
+                    Organize suas finanças de forma simples e intuitiva
                 </p>
             </div>
 
@@ -83,8 +80,8 @@ export default function RegisterPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Nome */}
                 <div>
-                    <label className="mb-2 block text-[10px] uppercase font-mono font-bold tracking-wider text-[var(--text-tertiary)]">
-                        01. Nome Completo
+                    <label className="mb-2 block text-xs font-semibold tracking-wide text-[var(--text-secondary)]">
+                        Nome Completo
                     </label>
                     <input
                         type="text"
@@ -92,20 +89,20 @@ export default function RegisterPage() {
                         onChange={(e) => setName(e.target.value)}
                         placeholder="Seu nome completo"
                         required
-                        className="input-base font-mono text-sm focus-ring"
+                        className="input-base text-sm focus-ring"
                         style={{
                             borderColor: getError('name') ? 'var(--color-danger-500)' : undefined,
                         }}
                     />
                     {getError('name') && (
-                        <p className="mt-1.5 text-xs font-mono text-[var(--color-danger-500)]">{getError('name')}</p>
+                        <p className="mt-1.5 text-xs text-[var(--color-danger-500)]">{getError('name')}</p>
                     )}
                 </div>
 
                 {/* Email */}
                 <div>
-                    <label className="mb-2 block text-[10px] uppercase font-mono font-bold tracking-wider text-[var(--text-tertiary)]">
-                        02. Endereço de E-mail
+                    <label className="mb-2 block text-xs font-semibold tracking-wide text-[var(--text-secondary)]">
+                        Endereço de E-mail
                     </label>
                     <input
                         type="email"
@@ -113,20 +110,20 @@ export default function RegisterPage() {
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="seu@email.com"
                         required
-                        className="input-base font-mono text-sm focus-ring"
+                        className="input-base text-sm focus-ring"
                         style={{
                             borderColor: getError('email') ? 'var(--color-danger-500)' : undefined,
                         }}
                     />
                     {getError('email') && (
-                        <p className="mt-1.5 text-xs font-mono text-[var(--color-danger-500)]">{getError('email')}</p>
+                        <p className="mt-1.5 text-xs text-[var(--color-danger-500)]">{getError('email')}</p>
                     )}
                 </div>
 
                 {/* Senha */}
                 <div>
-                    <label className="mb-2 block text-[10px] uppercase font-mono font-bold tracking-wider text-[var(--text-tertiary)]">
-                        03. Senha de Acesso
+                    <label className="mb-2 block text-xs font-semibold tracking-wide text-[var(--text-secondary)]">
+                        Senha de Acesso
                     </label>
                     <div className="relative">
                         <input
@@ -135,7 +132,7 @@ export default function RegisterPage() {
                             onChange={(e) => setPassword(e.target.value)}
                             placeholder="Mínimo 8 caracteres"
                             required
-                            className="input-base pr-10 font-mono text-sm focus-ring"
+                            className="input-base pr-10 text-sm focus-ring"
                             style={{
                                 borderColor: getError('password') ? 'var(--color-danger-500)' : undefined,
                             }}
@@ -150,14 +147,14 @@ export default function RegisterPage() {
                         </button>
                     </div>
                     {getError('password') && (
-                        <p className="mt-1.5 text-xs font-mono text-[var(--color-danger-500)]">{getError('password')}</p>
+                        <p className="mt-1.5 text-xs text-[var(--color-danger-500)]">{getError('password')}</p>
                     )}
                 </div>
 
                 {/* Confirmar senha */}
                 <div>
-                    <label className="mb-2 block text-[10px] uppercase font-mono font-bold tracking-wider text-[var(--text-tertiary)]">
-                        04. Confirmar Senha
+                    <label className="mb-2 block text-xs font-semibold tracking-wide text-[var(--text-secondary)]">
+                        Confirmar Senha
                     </label>
                     <input
                         type="password"
@@ -165,7 +162,7 @@ export default function RegisterPage() {
                         onChange={(e) => setPasswordConfirmation(e.target.value)}
                         placeholder="Repita a senha"
                         required
-                        className="input-base font-mono text-sm focus-ring"
+                        className="input-base text-sm focus-ring"
                     />
                 </div>
 
