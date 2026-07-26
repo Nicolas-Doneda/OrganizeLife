@@ -4,6 +4,9 @@ namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Auth\Notifications\ResetPassword;
 
 class AppServiceProvider extends ServiceProvider
@@ -21,6 +24,17 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Rate Limiter customizado para login e auth por E-mail + IP
+        RateLimiter::for('login', function (Request $request) {
+            $email = (string) $request->input('email');
+            return Limit::perMinute(5)->by($email . '|' . $request->ip());
+        });
+
+        // Rate Limiter para verificação 2FA
+        RateLimiter::for('two-factor', function (Request $request) {
+            return Limit::perMinute(5)->by($request->user()?->id ?: $request->ip());
+        });
+
         ResetPassword::createUrlUsing(function (object $notifiable, string $token) {
             return url("/reset-password?token={$token}&email={$notifiable->getEmailForPasswordReset()}");
         });

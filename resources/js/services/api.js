@@ -56,7 +56,7 @@ api.interceptors.request.use((config) => {
     return config;
 });
 
-// Interceptor: redireciona para login se token expirou (401)
+// Interceptor: redireciona para login se token expirou (401) e trata 429 (Rate Limit)
 api.interceptors.response.use(
     (response) => response,
     (error) => {
@@ -64,6 +64,11 @@ api.interceptors.response.use(
         if (axios.isCancel(error)) {
             console.debug(error.message);
             return Promise.reject(error);
+        }
+
+        if (error.response?.status === 429) {
+            if (!error.response.data) error.response.data = {};
+            error.response.data.message = 'Muitas tentativas em pouco tempo. Por favor, aguarde 1 minuto para tentar novamente.';
         }
 
         if (error.response?.status === 401) {

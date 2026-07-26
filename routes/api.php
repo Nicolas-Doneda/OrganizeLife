@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\Route;
 //  Qualquer pessoa pode acessar (senão ninguém conseguiria criar conta ou logar!)
 //  Rate limiting: 5 tentativas por minuto para evitar abuso
 
-Route::middleware('throttle:5,1')->group(function () {
+Route::middleware('throttle:login')->group(function () {
     //Registro e Login
     Route::post('auth/register', [AuthController::class, 'register']);
     Route::post('auth/login', [AuthController::class, 'login']);
@@ -45,7 +45,8 @@ Route::middleware('throttle:5,1')->group(function () {
 //EXPLICAÇÃO: Essas rotas só precisam do temp_token (com ability '2fa:verify')
 //O temp_token é gerado no login quando 2FA está ativo
 //IMPORTANTE: ficam FORA do grupo principal para não exigir token completo
-Route::middleware('auth:sanctum')->group(function () {
+//Rate limit: 5 tentativas por minuto para proteger contra força bruta
+Route::middleware(['auth:sanctum', 'throttle:two-factor'])->group(function () {
     Route::post('auth/2fa/verify', [TwoFactorController::class, 'verify']);
     Route::post('auth/2fa/recovery', [TwoFactorController::class, 'recovery']);
 });
