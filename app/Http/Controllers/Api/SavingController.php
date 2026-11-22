@@ -44,8 +44,8 @@ class SavingController extends Controller
 
         // Se criou a caixinha já com saldo inicial, registra como depósito
         if ($saving->current_amount > 0) {
-            $saving->deposits()->create([
-                'user_id' => $request->user()->id,
+            $request->user()->savingDeposits()->create([
+                'saving_id' => $saving->id,
                 'wallet_id' => $validated['wallet_id'] ?? null,
                 'amount' => $saving->current_amount,
                 'deposit_date' => now()->toDateString(),
@@ -95,8 +95,8 @@ class SavingController extends Controller
         // Se o saldo mudou, registra a diferença como depósito/retirada (P3)
         $diff = $newAmount - $oldAmount;
         if ($diff != 0) {
-            $saving->deposits()->create([
-                'user_id' => $request->user()->id,
+            $request->user()->savingDeposits()->create([
+                'saving_id' => $saving->id,
                 'wallet_id' => $validated['wallet_id'] ?? null,
                 'amount' => $diff,
                 'deposit_date' => now()->toDateString(),
@@ -112,8 +112,10 @@ class SavingController extends Controller
     public function destroy(Request $request, int $id): JsonResponse
     {
         $saving = $request->user()->savings()->findOrFail($id);
-        // Remove os depósitos antes do soft delete da caixinha
-        $saving->deposits()->delete();
+        // Remove os depósitos iterando para disparar o SavingDepositObserver
+        foreach ($saving->deposits as $deposit) {
+            $deposit->delete();
+        }
         $saving->delete();
         return response()->json(['message' => 'Economia removida com sucesso.']);
     }
@@ -123,7 +125,7 @@ class SavingController extends Controller
         $saving = $request->user()->savings()->findOrFail($id);
 
         $request->validate([
-            'amount' => 'required|numeric',
+            'amount' => 'required|numeric|not_in:0',
             'wallet_id' => [
                 'nullable',
                 'integer',
@@ -132,12 +134,20 @@ class SavingController extends Controller
                     ->whereNull('deleted_at'),
             ],
         ]);
-        $saving->current_amount += $request->amount;
+
+        $newBalance = (float) $saving->current_amount + (float) $request->amount;
+        if ($newBalance < 0) {
+            return response()->json([
+                'message' => 'O saldo da caixinha não pode ficar negativo.',
+            ], 422);
+        }
+
+        $saving->current_amount = $newBalance;
         $saving->save();
 
         // Salvar a evidência (Transaction) do depósito para o Orçamento
-        $saving->deposits()->create([
-            'user_id' => $request->user()->id,
+        $request->user()->savingDeposits()->create([
+            'saving_id' => $saving->id,
             'wallet_id' => $request->input('wallet_id'),
             'amount' => $request->amount,
             'deposit_date' => now()->toDateString(),

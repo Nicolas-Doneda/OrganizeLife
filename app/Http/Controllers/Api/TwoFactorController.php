@@ -124,25 +124,41 @@ class TwoFactorController extends Controller
     //DISABLE - Desativar 2FA
     //EXPLICAÇÃO:
     //  Remove o secret e os códigos de recuperação
-    //  Exige a senha atual para segurança extra
-    //  Sem isso, qualquer pessoa com o token poderia desativar o 2FA
+    //  Exige a senha atual OU um código 2FA válido (para contas OAuth sem senha conhecida)
     public function disable(Request $request): JsonResponse
     {
-        $request->validate([
-            'password' => ['required', 'current_password'],
-        ], [
-            'password.current_password' => 'Senha incorreta.',
-        ]);
+        $user = $request->user();
+        $passwordOrCode = (string) $request->input('password', '');
 
-        $request->user()->update([
+        $isValidPassword = Hash::check($passwordOrCode, $user->password);
+        $isValidTotp = false;
+
+        if (!$isValidPassword && $user->two_factor_secret && preg_match('/^\d{6}$/', $passwordOrCode)) {
+            $google2fa = new Google2FA();
+            $secret = decrypt($user->two_factor_secret);
+            $isValidTotp = (bool) $google2fa->verifyKey($secret, $passwordOrCode);
+        }
+
+        if (!$isValidPassword && !$isValidTotp) {
+            return response()->json([
+                'message' => 'Senha ou código 2FA incorreto.',
+                'errors' => [
+                    'password' => ['Senha ou código 2FA incorreto.'],
+                ],
+            ], 422);
+        }
+
+        $user->update([
             'two_factor_secret' => null,
             'two_factor_recovery_codes' => null,
             'two_factor_confirmed_at' => null,
         ]);
 
+        $cookieName = '2fa_trust_' . $user->id;
+
         return response()->json([
             'message' => 'Verificação de dois fatores desativada.',
-        ]);
+        ])->withoutCookie($cookieName);
     }
 
     //VERIFY - Verificar código 2FA no login
@@ -216,6 +232,12 @@ class TwoFactorController extends Controller
 
         $user = $request->user();
 
+        if (! $user->currentAccessToken()->can('2fa:verify')) {
+            return response()->json([
+                'message' => 'Token inválido para recuperação 2FA.',
+            ], 403);
+        }
+
         if (!$user->two_factor_recovery_codes || !$user->hasTwoFactorEnabled()) {
             return response()->json([
                 'message' => 'A autenticação de dois fatores não está ativa para esta conta.',
@@ -227,19 +249,25 @@ class TwoFactorController extends Controller
             true
         );
 
-        $code = $request->input('recovery_code');
+        $code = strtoupper(trim((string) $request->input('recovery_code')));
 
-        if (! in_array($code, $recoveryCodes)) {
+        $matchedIndex = null;
+        foreach ($recoveryCodes as $idx => $savedCode) {
+            if (hash_equals((string) $savedCode, $code)) {
+                $matchedIndex = $idx;
+                break;
+            }
+        }
+
+        if ($matchedIndex === null) {
             return response()->json([
                 'message' => 'Código de recuperação inválido.',
             ], 400);
         }
 
         //EXPLICAÇÃO: Remove o código usado (single-use)
-        //array_values() reindexa o array após o filter
-        $recoveryCodes = array_values(
-            array_filter($recoveryCodes, fn ($c) => $c !== $code)
-        );
+        unset($recoveryCodes[$matchedIndex]);
+        $recoveryCodes = array_values($recoveryCodes);
 
         $user->update([
             'two_factor_recovery_codes' => encrypt(json_encode($recoveryCodes)),

@@ -5,6 +5,7 @@ import api from '../services/api';
 import useSubmitGuard, { useActionGuard } from '../hooks/useSubmitGuard';
 import { Plus, CreditCard, Trash2, Pencil, Banknote, Landmark, DollarSign, X } from 'lucide-react';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
+import CurrencyInput from '../components/ui/CurrencyInput';
 
 const CURATED_COLORS = [
     { name: 'gray', hex: 'var(--color-accent-400)' }, { name: 'red', hex: 'var(--color-danger-500)' },
@@ -70,10 +71,13 @@ export default function WalletsPage() {
         e.preventDefault();
         await guard(async () => {
             try {
-                const payload = { ...form };
+                const payload = {
+                    ...form,
+                    balance: form.balance !== '' && form.balance !== undefined ? parseFloat(form.balance) || 0 : 0,
+                };
                 if (editing) { await api.put(`/wallets/${editing.id}`, payload); }
                 else { await api.post('/wallets', payload); }
-                setShowModal(false); setEditing(null); setForm({ name: '', color: 'purple', icon: 'credit-card' }); fetchWallets();
+                setShowModal(false); setEditing(null); setForm({ name: '', color: 'purple', icon: 'credit-card', balance: '0' }); fetchWallets();
             } catch (err) { console.error('Erro:', err); }
         });
     }
@@ -105,7 +109,7 @@ export default function WalletsPage() {
                         </p>
                     </div>
 
-                    <button onClick={() => { setEditing(null); setForm({ name: '', color: 'purple', icon: 'credit-card' }); setShowModal(true); }}
+                    <button onClick={() => { setEditing(null); setForm({ name: '', color: 'purple', icon: 'credit-card', balance: '0' }); setShowModal(true); }}
                         className="btn-primary px-4 py-2.5 text-xs font-semibold flex items-center gap-1.5 self-start sm:self-auto">
                         <Plus size={16} /> Nova Carteira
                     </button>
@@ -124,7 +128,7 @@ export default function WalletsPage() {
                     <p className="text-xs text-[var(--text-tertiary)] max-w-sm mb-4">
                         Cadastre contas bancárias, cartões de crédito ou dinheiro em espécie para conciliar seus lançamentos de entrada e saída.
                     </p>
-                    <button onClick={() => { setEditing(null); setForm({ name: '', color: 'purple', icon: 'credit-card' }); setShowModal(true); }}
+                    <button onClick={() => { setEditing(null); setForm({ name: '', color: 'purple', icon: 'credit-card', balance: '0' }); setShowModal(true); }}
                         className="btn-primary py-2 px-4 text-xs font-semibold flex items-center gap-1">
                         <Plus size={14} /> Cadastrar Primeira Carteira
                     </button>
@@ -154,7 +158,16 @@ export default function WalletsPage() {
                                         {wallet.name}
                                     </h3>
 
-                                    <div className="mt-5 pt-3 border-t border-dashed border-[var(--border-primary)] flex justify-between text-xs font-semibold text-[var(--text-secondary)]">
+                                    <div className="mt-3">
+                                        <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] block">
+                                            Saldo Atual
+                                        </span>
+                                        <p className={`text-xl font-extrabold tracking-tight mt-0.5 [font-variant-numeric:tabular-nums] ${parseFloat(wallet.balance || 0) < 0 ? 'text-[var(--color-danger-600)]' : 'text-[var(--text-primary)]'}`}>
+                                            {formatCurrency(wallet.balance)}
+                                        </p>
+                                    </div>
+
+                                    <div className="mt-4 pt-3 border-t border-dashed border-[var(--border-primary)] flex justify-between text-xs font-semibold text-[var(--text-secondary)]">
                                         <span>Contas Vinculadas</span>
                                         <span className="text-[var(--text-primary)] [font-variant-numeric:tabular-nums]">{(wallet.monthly_bills_count || 0)}</span>
                                     </div>
@@ -166,7 +179,7 @@ export default function WalletsPage() {
 
                                 {/* Actions strip at bottom */}
                                 <div className="px-5 py-3 bg-[var(--bg-secondary)]/50 border-t border-[var(--border-primary)] flex justify-between items-center opacity-90 group-hover:opacity-100 transition-opacity">
-                                    <button onClick={() => { setEditing(wallet); setForm({ name: wallet.name, color: wallet.color, icon: wallet.icon || 'credit-card' }); setShowModal(true); }}
+                                    <button onClick={() => { setEditing(wallet); setForm({ name: wallet.name, color: wallet.color, icon: wallet.icon || 'credit-card', balance: String(wallet.balance ?? '0') }); setShowModal(true); }}
                                         className="flex items-center gap-1 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--color-primary-600)] transition-colors">
                                         <Pencil size={11} /> Editar
                                     </button>
@@ -207,6 +220,13 @@ export default function WalletsPage() {
                                 <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required
                                     placeholder="Ex: Nubank, Itaú, Carteira Dinheiro"
                                     className="focus-ring w-full rounded-lg border px-3.5 py-2.5 text-xs outline-none bg-[var(--bg-input)] text-[var(--text-primary)] border-[var(--border-primary)] font-medium" />
+                            </div>
+
+                            {/* Balance */}
+                            <div>
+                                <label className="mb-1.5 block text-xs font-semibold text-[var(--text-secondary)]">Saldo Atual (R$)</label>
+                                <CurrencyInput value={form.balance} onChange={(v) => setForm({ ...form, balance: v })} placeholder="0,00"
+                                    className="focus-ring w-full rounded-lg border px-3.5 py-2.5 text-xs outline-none bg-[var(--bg-input)] text-[var(--text-primary)] border-[var(--border-primary)] font-semibold tabular-nums" />
                             </div>
 
                             {/* Icon */}

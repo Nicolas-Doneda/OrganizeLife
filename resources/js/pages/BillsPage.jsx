@@ -19,6 +19,9 @@ import {
     Trash2,
     CreditCard,
     Filter,
+    CheckSquare,
+    Square,
+    Copy,
 } from 'lucide-react';
 import BillModal from '../components/ui/modals/BillModal';
 
@@ -62,11 +65,29 @@ export default function BillsPage() {
     const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, bill: null, variant: 'danger', title: '', description: '', choices: [] });
     const [editConfirm, setEditConfirm] = useState({ isOpen: false, saveParams: null });
 
+    // Bulk selection state
+    const [selectedIds, setSelectedIds] = useState([]);
+    const [lastSelectedId, setLastSelectedId] = useState(null);
+    const [bulkLoading, setBulkLoading] = useState(false);
+    const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState({ isOpen: false, variant: 'danger', title: '', description: '', choices: [] });
+
     const activePeriodRef = useRef({ year, month });
 
     useEffect(() => {
         activePeriodRef.current = { year, month };
+        setSelectedIds([]);
+        setLastSelectedId(null);
     }, [year, month]);
+
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape' && selectedIds.length > 0 && !showModal && !deleteConfirm.isOpen && !bulkDeleteConfirm.isOpen) {
+                setSelectedIds([]);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [selectedIds.length, showModal, deleteConfirm.isOpen, bulkDeleteConfirm.isOpen]);
 
     const fetchBills = useCallback(async () => {
         const reqYear = year;
@@ -243,6 +264,9 @@ export default function BillsPage() {
                         ...payload,
                         due_date: dueDate,
                         expected_amount: parseFloat(payload.expected_amount) || 0,
+                        paid_amount: payload.paid_amount !== '' && payload.paid_amount != null
+                            ? parseFloat(payload.paid_amount)
+                            : (editingBill.status === 'paid' ? (parseFloat(payload.expected_amount) || 0) : null),
                         category_id: payload.category_id || null,
                         wallet_id: payload.wallet_id || null,
                         recurring_bill_id: recurringId,
@@ -324,6 +348,128 @@ export default function BillsPage() {
         .filter((b) => filterStatus === 'all' || b.status === filterStatus)
         .filter((b) => filterCategory === 'all' || String(b.category_id) === filterCategory)
         .filter((b) => !search || b.name_snapshot.toLowerCase().includes(search.toLowerCase()));
+
+    // Bulk selection handlers
+    const visibleIds = filteredBills.map((b) => b.id);
+    const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.includes(id));
+
+    function toggleSelectAll() {
+        if (allVisibleSelected) {
+            setSelectedIds((prev) => prev.filter((id) => !visibleIds.includes(id)));
+        } else {
+            setSelectedIds((prev) => Array.from(new Set([...prev, ...visibleIds])));
+        }
+    }
+
+    function toggleSelectBill(billId, event) {
+        if (event?.shiftKey && lastSelectedId && visibleIds.includes(lastSelectedId) && visibleIds.includes(billId)) {
+            const idxA = visibleIds.indexOf(lastSelectedId);
+            const idxB = visibleIds.indexOf(billId);
+            const start = Math.min(idxA, idxB);
+            const end = Math.max(idxA, idxB);
+            const rangeIds = visibleIds.slice(start, end + 1);
+            setSelectedIds((prev) => Array.from(new Set([...prev, ...rangeIds])));
+        } else {
+            setSelectedIds((prev) =>
+                prev.includes(billId) ? prev.filter((id) => id !== billId) : [...prev, billId]
+            );
+        }
+        setLastSelectedId(billId);
+    }
+
+    const selectedBills = bills.filter((b) => selectedIds.includes(b.id));
+    const selectedTotalAmount = selectedBills.reduce((acc, b) => acc + parseFloat(b.expected_amount || 0), 0);
+    const selectedUnpaidCount = selectedBills.filter((b) => b.status !== 'paid').length;
+
+    async function handleBulkPay() {
+        if (selectedIds.length === 0 || bulkLoading) return;
+        setBulkLoading(true);
+        try {
+            await api.post('/monthly-bills/bulk-pay', { ids: selectedIds });
+            setSelectedIds([]);
+            await fetchBills();
+        } catch (err) {
+            console.error('Erro ao pagar em lote:', err);
+        } finally {
+            setBulkLoading(false);
+        }
+    }
+
+    function openBulkDeleteConfirm() {
+        if (selectedIds.length === 0) return;
+        const hasInstallments = selectedBills.some((b) => !!b.installment_group_id);
+        const hasRecurring = selectedBills.some((b) => !!b.recurring_bill_id);
+
+        if (hasInstallments || hasRecurring) {
+            setBulkDeleteConfirm({
+                isOpen: true,
+                variant: 'choice',
+                title: `Excluir ${selectedIds.length} Conta(s) Selecionada(s)`,
+                description: 'Algumas das contas selecionadas possuem parcelas futuras ou recorrência mensal. Como deseja proceder?',
+                choices: [
+                    {
+                        label: 'Remover apenas os lançamentos deste mês',
+                        description: 'Mantém assinaturas recorrentes e parcelas de meses seguintes intactas.',
+                        variant: 'secondary',
+                        onClick: () => executeBulkDelete({ deleteAll: false, deleteRecurring: false }),
+                    },
+                    {
+                        label: 'Remover também parcelas futuras e cancelar recorrências',
+                        description: 'Exclui as contas selecionadas e encerra os parcelamentos/assinaturas vinculados a elas.',
+                        variant: 'danger',
+                        onClick: () => executeBulkDelete({ deleteAll: true, deleteRecurring: true }),
+                    },
+                ],
+            });
+        } else {
+            setBulkDeleteConfirm({
+                isOpen: true,
+                variant: 'danger',
+                title: `Excluir ${selectedIds.length} Conta(s)`,
+                description: `Deseja mesmo remover as ${selectedIds.length} contas selecionadas (${formatCurrency(selectedTotalAmount)})? Esta ação não pode ser desfeita.`,
+                choices: [],
+            });
+        }
+    }
+
+    async function executeBulkDelete({ deleteAll = false, deleteRecurring = false } = {}) {
+        if (selectedIds.length === 0 || bulkLoading) return;
+        setBulkLoading(true);
+        try {
+            await api.post('/monthly-bills/bulk-delete', {
+                ids: selectedIds,
+                delete_all_installments: deleteAll,
+                delete_recurring: deleteRecurring,
+            });
+            setSelectedIds([]);
+            setBulkDeleteConfirm({ isOpen: false, variant: 'danger', title: '', description: '', choices: [] });
+            await fetchBills();
+        } catch (err) {
+            console.error('Erro ao excluir em lote:', err);
+        } finally {
+            setBulkLoading(false);
+        }
+    }
+
+    async function handleDuplicate(bill) {
+        await guardAction(`dup-${bill.id}`, async () => {
+            try {
+                await api.post('/monthly-bills', {
+                    name_snapshot: `${bill.name_snapshot} (Cópia)`,
+                    expected_amount: parseFloat(bill.expected_amount) || 0,
+                    due_date: normalizeDate(bill.due_date) || `${year}-${String(month).padStart(2, '0')}-01`,
+                    year,
+                    month,
+                    category_id: bill.category_id || null,
+                    wallet_id: bill.wallet_id || null,
+                    notes: bill.notes || null,
+                });
+                fetchBills();
+            } catch (err) {
+                console.error('Erro ao duplicar conta:', err);
+            }
+        });
+    }
 
     const CATEGORY_COLORS = {
         gray: 'var(--color-accent-400)', red: 'var(--color-danger-500)', orange: 'var(--color-warning-600)', yellow: 'var(--color-warning-500)',
@@ -509,13 +655,30 @@ export default function BillsPage() {
                 /* LedgerList */
                 <div className="border border-[var(--border-primary)] rounded-xl bg-[var(--bg-card)] shadow-xs overflow-hidden relative">
                     {/* Header virtual do Ledger */}
-                    <div className="hidden sm:flex items-center gap-4 bg-[var(--bg-secondary)]/50 px-6 py-3.5 text-xs font-semibold text-[var(--text-tertiary)] border-b border-[var(--border-primary)]">
-                        <div className="w-10 shrink-0 text-center">Status</div>
-                        <div className="w-24 shrink-0 sm:pl-4">Vencimento</div>
-                        <div className="flex-1">Descrição / Categoria</div>
-                        <div className="w-36 shrink-0">Conta / Carteira</div>
-                        <div className="w-40 shrink-0 text-right sm:pr-8">Valor</div>
-                        <div className="w-32 shrink-0"></div>
+                    <div className="flex items-center gap-3 sm:gap-4 bg-[var(--bg-secondary)]/50 px-4 sm:px-6 py-3.5 text-xs font-semibold text-[var(--text-tertiary)] border-b border-[var(--border-primary)]">
+                        <div className="w-6 shrink-0 flex items-center justify-center">
+                            <button
+                                type="button"
+                                onClick={toggleSelectAll}
+                                className={`flex h-4 w-4 items-center justify-center rounded border transition-all ${
+                                    allVisibleSelected
+                                        ? 'border-[var(--color-primary-500)] bg-[var(--color-primary-500)] text-white'
+                                        : 'border-[var(--border-primary)] bg-[var(--bg-card)] hover:border-[var(--color-primary-500)]'
+                                }`}
+                                title={allVisibleSelected ? 'Desmarcar todas' : 'Selecionar todas visíveis'}
+                            >
+                                {allVisibleSelected && <Check size={10} strokeWidth={3.5} />}
+                            </button>
+                        </div>
+                        <div className="w-8 shrink-0 text-center hidden sm:block">Pago</div>
+                        <div className="w-24 shrink-0 sm:pl-2 hidden sm:block">Vencimento</div>
+                        <div className="flex-1">
+                            <span className="hidden sm:inline">Descrição / Categoria</span>
+                            <span className="sm:hidden">Selecionar todas ({filteredBills.length})</span>
+                        </div>
+                        <div className="w-36 shrink-0 hidden sm:block">Conta / Carteira</div>
+                        <div className="w-36 shrink-0 text-right sm:pr-6 hidden sm:block">Valor</div>
+                        <div className="w-36 shrink-0 hidden sm:block"></div>
                     </div>
 
                     <div className="divide-y divide-[var(--border-primary)]">
@@ -523,18 +686,69 @@ export default function BillsPage() {
                             <BillCard
                                 key={bill.id}
                                 bill={bill}
+                                isSelected={selectedIds.includes(bill.id)}
+                                onToggleSelect={(e) => toggleSelectBill(bill.id, e)}
                                 categoryColors={CATEGORY_COLORS}
                                 wallets={wallets}
                                 actionInProgress={isActionInProgress(bill.id)}
                                 onPay={() => handlePay(bill)}
                                 onUndoPay={() => handleUndoPay(bill)}
                                 onCancel={() => handleCancel(bill)}
+                                onDuplicate={() => handleDuplicate(bill)}
                                 onEdit={() => openEdit(bill)}
                                 onDelete={() => openDeleteConfirm(bill)}
                             />
                         ))}
                     </div>
                 </div>
+            )}
+
+            {/* Barra Flutuante de Ações em Lote (Bulk Actions) */}
+            {selectedIds.length > 0 && createPortal(
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[90] w-[94%] max-w-2xl rounded-2xl border border-[var(--border-primary)] bg-[var(--bg-card)] px-4 py-3 shadow-2xl flex flex-wrap items-center justify-between gap-3 animate-in fade-in slide-in-from-bottom-4 duration-200">
+                    <div className="flex items-center gap-3">
+                        <span className="flex h-7 px-2.5 items-center justify-center rounded-lg bg-[var(--color-primary-500)]/15 border border-[var(--color-primary-500)]/30 text-xs font-extrabold text-[var(--color-primary-600)] tabular-nums">
+                            {selectedIds.length} {selectedIds.length === 1 ? 'selecionada' : 'selecionadas'}
+                        </span>
+                        <div className="text-xs">
+                            <span className="text-[var(--text-tertiary)] font-medium">Total: </span>
+                            <strong className="text-[var(--text-primary)] font-bold tabular-nums">{formatCurrency(selectedTotalAmount)}</strong>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        {selectedUnpaidCount > 0 && (
+                            <button
+                                type="button"
+                                onClick={handleBulkPay}
+                                disabled={bulkLoading}
+                                className="flex items-center gap-1.5 rounded-xl border border-[var(--color-success-500)]/40 bg-[var(--color-success-50)] dark:bg-[var(--color-success-500)]/10 px-3 py-2 text-xs font-bold text-[var(--color-success-600)] hover:bg-[var(--color-success-500)] hover:text-white transition-all active:scale-95 disabled:opacity-50"
+                            >
+                                <Check size={13} strokeWidth={2.5} />
+                                Marcar Pagas ({selectedUnpaidCount})
+                            </button>
+                        )}
+                        <button
+                            type="button"
+                            onClick={openBulkDeleteConfirm}
+                            disabled={bulkLoading}
+                            className="flex items-center gap-1.5 rounded-xl bg-[var(--color-danger-600)] px-3.5 py-2 text-xs font-bold text-white hover:bg-[var(--color-danger-500)] transition-all active:scale-95 disabled:opacity-50 shadow-sm"
+                        >
+                            <Trash2 size={13} strokeWidth={2.5} />
+                            Excluir ({selectedIds.length})
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setSelectedIds([])}
+                            disabled={bulkLoading}
+                            className="rounded-xl p-2 text-xs font-semibold text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] transition-colors"
+                            title="Limpar seleção (Esc)"
+                        >
+                            <X size={15} />
+                        </button>
+                    </div>
+                </div>,
+                document.body
             )}
 
             <BillModal
@@ -559,6 +773,18 @@ export default function BillsPage() {
                 confirmLabel="Remover"
                 onConfirm={handleConfirmSimpleDelete}
                 choices={deleteConfirm.choices}
+            />
+
+            <ConfirmDialog
+                isOpen={bulkDeleteConfirm.isOpen}
+                onClose={() => setBulkDeleteConfirm({ isOpen: false, variant: 'danger', title: '', description: '', choices: [] })}
+                title={bulkDeleteConfirm.title}
+                description={bulkDeleteConfirm.description}
+                variant={bulkDeleteConfirm.variant}
+                confirmLabel="Excluir Selecionadas"
+                loading={bulkLoading}
+                onConfirm={() => executeBulkDelete({ deleteAll: false, deleteRecurring: false })}
+                choices={bulkDeleteConfirm.choices}
             />
 
             <ConfirmDialog
@@ -594,7 +820,7 @@ export default function BillsPage() {
 
 /* ========== Sub-components ========== */
 
-function BillCard({ bill, categoryColors, wallets = [], actionInProgress = false, onPay, onUndoPay, onCancel, onEdit, onDelete }) {
+function BillCard({ bill, isSelected = false, onToggleSelect, categoryColors, wallets = [], actionInProgress = false, onPay, onUndoPay, onCancel, onDuplicate, onEdit, onDelete }) {
     const isPaid = bill.status === 'paid';
     const isOverdue = bill.status === 'overdue';
     const isCanceled = bill.status === 'canceled';
@@ -603,58 +829,77 @@ function BillCard({ bill, categoryColors, wallets = [], actionInProgress = false
     const walletObj = bill.wallet_id ? wallets.find(w => w.id === bill.wallet_id) : null;
 
     return (
-        <div className={`group flex flex-col sm:flex-row sm:items-center gap-4 px-6 py-4 transition-all hover:bg-[var(--bg-hover)]/30 relative bg-[var(--bg-card)] border-l-2 ${
-            isPaid 
-                ? 'border-l-[var(--color-success-500)]/60 opacity-80' 
-                : isOverdue 
-                    ? 'border-l-[var(--color-danger-500)] bg-[var(--color-danger-50)]/5 dark:bg-[var(--color-danger-950)]/5' 
-                    : isCanceled 
-                        ? 'border-l-[var(--text-tertiary)]/30 opacity-60' 
-                        : 'border-l-[var(--color-warning-500)]/60'
+        <div className={`group flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 px-4 sm:px-6 py-4 transition-all hover:bg-[var(--bg-hover)]/30 relative bg-[var(--bg-card)] border-l-2 ${
+            isSelected
+                ? 'bg-[var(--color-primary-500)]/5 dark:bg-[var(--color-primary-500)]/10 border-l-[var(--color-primary-500)]'
+                : isPaid 
+                    ? 'border-l-[var(--color-success-500)]/60 opacity-80' 
+                    : isOverdue 
+                        ? 'border-l-[var(--color-danger-500)] bg-[var(--color-danger-50)]/5 dark:bg-[var(--color-danger-950)]/5' 
+                        : isCanceled 
+                            ? 'border-l-[var(--text-tertiary)]/30 opacity-60' 
+                            : 'border-l-[var(--color-warning-500)]/60'
         }`}>
-            {/* Status Checkbox */}
-            <div className="w-10 shrink-0 flex items-center justify-center z-10">
-                {isPaid ? (
-                    <button 
-                        onClick={() => !actionInProgress && onUndoPay()} 
-                        disabled={actionInProgress}
-                        className="flex h-5 w-5 items-center justify-center rounded border border-[var(--color-success-500)] bg-[var(--color-success-50)] dark:bg-[var(--color-success-500)]/10 text-[var(--color-success-600)] transition-all hover:scale-95 disabled:opacity-50"
-                        title="Estornar pagamento"
-                    >
-                        {actionInProgress ? (
-                            <div className="h-2.5 w-2.5 animate-spin rounded-full border-2 border-current/30 border-t-current" />
-                        ) : (
-                            <Check size={11} strokeWidth={3.5} />
-                        )}
-                    </button>
-                ) : isCanceled ? (
-                    <div className="flex h-5 w-5 items-center justify-center rounded border border-[var(--border-primary)] bg-[var(--bg-secondary)] text-[var(--text-tertiary)] opacity-60">
-                        <X size={10} strokeWidth={3.5} />
-                    </div>
-                ) : (
-                    <button 
-                        onClick={() => !actionInProgress && onPay()} 
-                        disabled={actionInProgress}
-                        className={`flex h-5 w-5 items-center justify-center rounded border transition-all hover:scale-95 disabled:opacity-50 ${
-                            isOverdue 
-                                ? 'border-[var(--color-danger-500)] bg-[var(--color-danger-50)] dark:bg-[var(--color-danger-950)]/40 text-[var(--color-danger-600)] hover:border-[var(--color-danger-500)]' 
-                                : 'border-[var(--border-primary)] hover:border-[var(--color-primary-500)] hover:bg-[var(--bg-hover)]'
+            {/* Selection Checkbox + Status Checkbox */}
+            <div className="flex items-center gap-3 shrink-0 z-10">
+                <div className="w-6 flex items-center justify-center">
+                    <button
+                        type="button"
+                        onClick={onToggleSelect}
+                        className={`flex h-4 w-4 items-center justify-center rounded border transition-all ${
+                            isSelected
+                                ? 'border-[var(--color-primary-500)] bg-[var(--color-primary-500)] text-white'
+                                : 'border-[var(--border-primary)] bg-[var(--bg-card)] opacity-60 group-hover:opacity-100 hover:border-[var(--color-primary-500)]'
                         }`}
-                        title="Confirmar pagamento"
+                        title={isSelected ? 'Desmarcar conta' : 'Selecionar conta (Shift+Clique para intervalo)'}
                     >
-                        {actionInProgress ? (
-                            <div className="h-2.5 w-2.5 animate-spin rounded-full border-2 border-current/30 border-t-current" />
-                        ) : (
-                            <div className={`h-1.5 w-1.5 rounded-full opacity-35 group-hover:opacity-100 transition-opacity ${
-                                isOverdue ? 'bg-[var(--color-danger-500)]' : 'bg-[var(--text-tertiary)]'
-                            }`} />
-                        )}
+                        {isSelected && <Check size={10} strokeWidth={3.5} />}
                     </button>
-                )}
+                </div>
+
+                <div className="w-8 flex items-center justify-center">
+                    {isPaid ? (
+                        <button 
+                            onClick={() => !actionInProgress && onUndoPay()} 
+                            disabled={actionInProgress}
+                            className="flex h-5 w-5 items-center justify-center rounded border border-[var(--color-success-500)] bg-[var(--color-success-50)] dark:bg-[var(--color-success-500)]/10 text-[var(--color-success-600)] transition-all hover:scale-95 disabled:opacity-50"
+                            title="Estornar pagamento"
+                        >
+                            {actionInProgress ? (
+                                <div className="h-2.5 w-2.5 animate-spin rounded-full border-2 border-current/30 border-t-current" />
+                            ) : (
+                                <Check size={11} strokeWidth={3.5} />
+                            )}
+                        </button>
+                    ) : isCanceled ? (
+                        <div className="flex h-5 w-5 items-center justify-center rounded border border-[var(--border-primary)] bg-[var(--bg-secondary)] text-[var(--text-tertiary)] opacity-60">
+                            <X size={10} strokeWidth={3.5} />
+                        </div>
+                    ) : (
+                        <button 
+                            onClick={() => !actionInProgress && onPay()} 
+                            disabled={actionInProgress}
+                            className={`flex h-5 w-5 items-center justify-center rounded border transition-all hover:scale-95 disabled:opacity-50 ${
+                                isOverdue 
+                                    ? 'border-[var(--color-danger-500)] bg-[var(--color-danger-50)] dark:bg-[var(--color-danger-950)]/40 text-[var(--color-danger-600)] hover:border-[var(--color-danger-500)]' 
+                                    : 'border-[var(--border-primary)] hover:border-[var(--color-primary-500)] hover:bg-[var(--bg-hover)]'
+                            }`}
+                            title="Confirmar pagamento"
+                        >
+                            {actionInProgress ? (
+                                <div className="h-2.5 w-2.5 animate-spin rounded-full border-2 border-current/30 border-t-current" />
+                            ) : (
+                                <div className={`h-1.5 w-1.5 rounded-full opacity-35 group-hover:opacity-100 transition-opacity ${
+                                    isOverdue ? 'bg-[var(--color-danger-500)]' : 'bg-[var(--text-tertiary)]'
+                                }`} />
+                            )}
+                        </button>
+                    )}
+                </div>
             </div>
 
             {/* Data de Vencimento */}
-            <div className="w-24 shrink-0 text-xs text-[var(--text-secondary)] sm:pl-4 tabular-nums">
+            <div className="w-24 shrink-0 text-xs text-[var(--text-secondary)] sm:pl-2 tabular-nums">
                 {formatDateBR(bill.due_date)}
             </div>
 
@@ -714,7 +959,7 @@ function BillCard({ bill, categoryColors, wallets = [], actionInProgress = false
                 )}
             </div>
 
-            <div className="text-left sm:text-right shrink-0 w-40 sm:pr-8">
+            <div className="text-left sm:text-right shrink-0 w-36 sm:pr-6">
                 <p className={`text-sm font-semibold tracking-tight tabular-nums ${isPaid ? 'text-success-600' : isOverdue ? 'text-danger-600 dark:text-danger-500' : 'text-[var(--text-primary)]'}`}>
                     {formatCurrency(bill.expected_amount)}
                 </p>
@@ -726,7 +971,7 @@ function BillCard({ bill, categoryColors, wallets = [], actionInProgress = false
             </div>
 
             {/* Ações permanentes de baixa opacidade para segurança/não-poluição */}
-            <div className="flex items-center justify-start sm:justify-end gap-1 w-full sm:w-32 shrink-0 opacity-65 group-hover:opacity-100 transition-opacity duration-200 z-10">
+            <div className="flex items-center justify-start sm:justify-end gap-1 w-full sm:w-36 shrink-0 opacity-65 group-hover:opacity-100 transition-opacity duration-200 z-10">
                 {!isPaid && !isCanceled && (
                     <button onClick={onPay} disabled={actionInProgress} className="flex items-center justify-center h-7 w-7 rounded-lg border border-[var(--border-primary)] transition-colors hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--color-success-600)] disabled:opacity-50" title="Marcar como Pago">
                         <Check size={12} strokeWidth={2.5} />
@@ -746,6 +991,11 @@ function BillCard({ bill, categoryColors, wallets = [], actionInProgress = false
                             <path d="M3 7v6h6" />
                             <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
                         </svg>
+                    </button>
+                )}
+                {!bill.recurring_bill_id && !bill.installment_group_id && (
+                    <button onClick={onDuplicate} disabled={actionInProgress} className="flex items-center justify-center h-7 w-7 rounded-lg border border-[var(--border-primary)] transition-colors hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--color-primary-600)] disabled:opacity-50" title="Duplicar Lançamento">
+                        <Copy size={11} strokeWidth={2.5} />
                     </button>
                 )}
                 <button onClick={onEdit} className="flex items-center justify-center h-7 w-7 rounded-lg border border-[var(--border-primary)] transition-colors hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--color-primary-600)]" title="Editar">

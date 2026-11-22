@@ -184,16 +184,46 @@ class User extends Authenticatable implements MustVerifyEmail
             ->forMonth($year, $month)
             ->get();
 
-        // 2. Busca contas recorrentes ativas
+        // 2. Busca contas recorrentes ativas com a menor referência de ano/mês já gerada (incluindo soft-deleted)
         $activeRecurring = $this->recurringBills()
             ->with('category')
             ->where('active', true)
             ->get();
 
-        $existingRecurringIds = $bills->pluck('recurring_bill_id')->filter()->toArray();
+        // Inclui registros com soft-delete (withTrashed) para não recriar virtualmente uma conta que foi excluída ("só este mês")
+        $existingRecurringIds = $this->monthlyBills()
+            ->withTrashed()
+            ->forMonth($year, $month)
+            ->whereNotNull('recurring_bill_id')
+            ->pluck('recurring_bill_id')
+            ->unique()
+            ->toArray();
+
+        // Busca o primeiro período (year * 100 + month) de cada recorrente caso tenha sido criada em mês anterior ao created_at
+        $earliestPeriods = $this->monthlyBills()
+            ->withTrashed()
+            ->whereNotNull('recurring_bill_id')
+            ->selectRaw('recurring_bill_id, MIN(year * 100 + month) as min_period')
+            ->groupBy('recurring_bill_id')
+            ->pluck('min_period', 'recurring_bill_id');
+
+        $targetPeriod = $year * 100 + $month;
 
         foreach ($activeRecurring as $recur) {
             if (!in_array($recur->id, $existingRecurringIds)) {
+                // Determina a partir de qual mês/ano essa recorrência passou a existir
+                $createdPeriod = $recur->created_at
+                    ? ($recur->created_at->year * 100 + $recur->created_at->month)
+                    : $targetPeriod;
+
+                $minBillPeriod = $earliestPeriods[$recur->id] ?? $createdPeriod;
+                $startPeriod = min($createdPeriod, (int) $minBillPeriod);
+
+                // Não projeta contas recorrentes para meses anteriores à sua criação/início
+                if ($targetPeriod < $startPeriod) {
+                    continue;
+                }
+
                 $dueDay = min($recur->due_day, \Carbon\Carbon::createFromDate($year, $month, 1)->endOfMonth()->day);
                 $dueDate = \Carbon\Carbon::createFromDate($year, $month, $dueDay)->toDateString();
 
@@ -245,14 +275,13 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function getIncomesWithVirtual(int $year, int $month)
     {
+        $startDate = \Carbon\Carbon::createFromDate($year, $month, 1)->startOfMonth()->toDateString();
+        $endDate = \Carbon\Carbon::createFromDate($year, $month, 1)->endOfMonth()->toDateString();
+
         // 1. Busca rendas reais do banco de dados (eager loading wallet)
         $incomes = $this->incomes()
             ->with('wallet')
-            ->where(function ($query) use ($year, $month) {
-                $startDate = \Carbon\Carbon::createFromDate($year, $month, 1)->startOfMonth()->toDateString();
-                $endDate = \Carbon\Carbon::createFromDate($year, $month, 1)->endOfMonth()->toDateString();
-                $query->whereBetween('expected_date', [$startDate, $endDate]);
-            })
+            ->whereBetween('expected_date', [$startDate, $endDate])
             ->get();
 
         // 2. Busca rendas recorrentes ativas
@@ -261,10 +290,43 @@ class User extends Authenticatable implements MustVerifyEmail
             ->where('active', true)
             ->get();
 
-        $existingRecurringIds = $incomes->pluck('recurring_income_id')->filter()->toArray();
+        // Inclui registros com soft-delete (withTrashed) para não recriar virtualmente uma renda que foi excluída ("só este mês")
+        $existingRecurringIds = $this->incomes()
+            ->withTrashed()
+            ->whereBetween('expected_date', [$startDate, $endDate])
+            ->whereNotNull('recurring_income_id')
+            ->pluck('recurring_income_id')
+            ->unique()
+            ->toArray();
+
+        $earliestDates = $this->incomes()
+            ->withTrashed()
+            ->whereNotNull('recurring_income_id')
+            ->selectRaw('recurring_income_id, MIN(expected_date) as min_date')
+            ->groupBy('recurring_income_id')
+            ->pluck('min_date', 'recurring_income_id');
+
+        $targetPeriod = $year * 100 + $month;
 
         foreach ($activeRecurring as $recur) {
             if (!in_array($recur->id, $existingRecurringIds)) {
+                $createdPeriod = $recur->created_at
+                    ? ($recur->created_at->year * 100 + $recur->created_at->month)
+                    : $targetPeriod;
+
+                $minIncomePeriod = $createdPeriod;
+                if (!empty($earliestDates[$recur->id])) {
+                    $minDate = \Carbon\Carbon::parse($earliestDates[$recur->id]);
+                    $minIncomePeriod = $minDate->year * 100 + $minDate->month;
+                }
+
+                $startPeriod = min($createdPeriod, $minIncomePeriod);
+
+                // Não projeta rendas recorrentes para meses anteriores à sua criação/início
+                if ($targetPeriod < $startPeriod) {
+                    continue;
+                }
+
                 $receiveDay = min($recur->receive_day, \Carbon\Carbon::createFromDate($year, $month, 1)->endOfMonth()->day);
                 $expectedDate = \Carbon\Carbon::createFromDate($year, $month, $receiveDay)->toDateString();
 

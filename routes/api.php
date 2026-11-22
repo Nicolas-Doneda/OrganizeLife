@@ -97,16 +97,21 @@ Route::middleware(['auth:sanctum', 'ability:*', 'throttle:60,1'])->group(functio
     Route::patch('recurring-bills/{id}/activate', [RecurringBillController::class, 'activate']);
     Route::patch('recurring-bills/{id}/deactivate', [RecurringBillController::class, 'deactivate']);
 
-    //CONTAS MENSAIS (CRUD + ações de status)
+    //CONTAS MENSAIS (CRUD + ações de status + lote)
+    Route::post('monthly-bills/bulk-delete', [MonthlyBillController::class, 'bulkDestroy']);
+    Route::post('monthly-bills/bulk-pay', [MonthlyBillController::class, 'bulkPay']);
     Route::apiResource('monthly-bills', MonthlyBillController::class);
     Route::patch('monthly-bills/{id}/pay', [MonthlyBillController::class, 'markAsPaid']);
     Route::patch('monthly-bills/{id}/pending', [MonthlyBillController::class, 'markAsPending']);
     Route::patch('monthly-bills/{id}/overdue', [MonthlyBillController::class, 'markAsOverdue']);
     Route::patch('monthly-bills/{id}/cancel', [MonthlyBillController::class, 'cancel']);
 
-    //INCOMES (CRUD + receive)
+    //INCOMES (CRUD + receive + lote)
+    Route::post('incomes/bulk-delete', [IncomeController::class, 'bulkDestroy']);
+    Route::post('incomes/bulk-receive', [IncomeController::class, 'bulkReceive']);
     Route::apiResource('incomes', IncomeController::class);
     Route::patch('incomes/{id}/receive', [IncomeController::class, 'receive']);
+    Route::patch('incomes/{id}/pending', [IncomeController::class, 'markAsPending']);
 
     //RECURRING INCOMES (CRUD + activate/deactivate)
     Route::apiResource('recurring-incomes', \App\Http\Controllers\Api\RecurringIncomeController::class);

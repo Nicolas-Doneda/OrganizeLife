@@ -620,7 +620,7 @@ export default function DashboardPage() {
                                     {/* Ficha de calendário curta */}
                                     <div className="flex flex-col items-center justify-center h-10 w-11 rounded-lg bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-center shrink-0">
                                         <span className="text-[8px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">
-                                            {event.start_date ? new Date(event.start_date).toLocaleString('pt-BR', { month: 'short' }).slice(0, 3) : ''}
+                                            {event.start_date ? new Date(event.start_date).toLocaleString('pt-BR', { month: 'short', timeZone: 'UTC' }).slice(0, 3) : ''}
                                         </span>
                                         <span className="text-[13px] font-bold text-[var(--text-primary)] [font-variant-numeric:tabular-nums] leading-none mt-0.5">
                                             {event.start_date ? new Date(event.start_date).getUTCDate() : ''}

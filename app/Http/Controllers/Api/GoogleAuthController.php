@@ -69,6 +69,23 @@ class GoogleAuthController extends Controller
                     'avatar' => $this->cloneAvatar($googleUser->getAvatar()),
                     'email_verified_at' => now(), // Assume o email do Google como verificado
                 ]);
+
+                // Seed default categories for the new user
+                $defaultCategories = [
+                    ['name' => 'Alimentação', 'color' => 'orange', 'icon' => 'utensils', 'budget_group' => 'needs'],
+                    ['name' => 'Moradia', 'color' => 'blue', 'icon' => 'home', 'budget_group' => 'needs'],
+                    ['name' => 'Transporte', 'color' => 'emerald', 'icon' => 'car', 'budget_group' => 'needs'],
+                    ['name' => 'Lazer', 'color' => 'rose', 'icon' => 'smile', 'budget_group' => 'wants'],
+                    ['name' => 'Economias', 'color' => 'violet', 'icon' => 'piggy-bank', 'budget_group' => 'savings'],
+                ];
+                foreach ($defaultCategories as $category) {
+                    $user->categories()->create($category);
+                }
+            }
+
+            if ($user->isSuspended()) {
+                $frontendErrorUrl = env('APP_URL', 'http://127.0.0.1:8000') . '/login?error=account_suspended';
+                return redirect($frontendErrorUrl);
             }
 
             // Gera um código de uso único válido por 60 segundos
@@ -104,6 +121,37 @@ class GoogleAuthController extends Controller
         }
 
         $user = User::findOrFail($userId);
+
+        if ($user->isSuspended()) {
+            return response()->json([
+                'message' => 'Sua conta está suspensa.',
+                'reason' => $user->suspension_reason,
+            ], 403);
+        }
+
+        if ($user->hasTwoFactorEnabled()) {
+            $cookieName = '2fa_trust_' . $user->id;
+            $trusted = false;
+            if ($request->hasCookie($cookieName)) {
+                $cookieValue = $request->cookie($cookieName);
+                $expectedHash = hash_hmac('sha256', $user->id . '|' . decrypt($user->two_factor_secret), config('app.key'));
+                if (hash_equals($expectedHash, (string) $cookieValue)) {
+                    $trusted = true;
+                }
+            }
+
+            if (!$trusted) {
+                $tempToken = $user->createToken('2fa_temp', ['2fa:verify'])->plainTextToken;
+
+                return response()->json([
+                    'message' => 'Verificação de dois fatores necessária.',
+                    'requires_2fa' => true,
+                    'data' => [
+                        'temp_token' => $tempToken,
+                    ],
+                ], 200);
+            }
+        }
 
         // Revoga tokens antigos caso exista a regra de 1 login
         $user->tokens()->delete();

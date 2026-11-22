@@ -15,6 +15,7 @@ import {
     Trash2,
     CreditCard,
     Repeat,
+    Copy,
 } from 'lucide-react';
 
 const MONTH_NAMES = [
@@ -55,15 +56,33 @@ export default function IncomesPage() {
         status: 'pending',
         wallet_id: '',
     });
-    const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, income: null });
+    const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, income: null, variant: 'danger', title: '', description: '', choices: [] });
     const { isSubmitting, guard } = useSubmitGuard();
     const { isActionInProgress, guardAction } = useActionGuard();
+
+    // Bulk selection state
+    const [selectedIds, setSelectedIds] = useState([]);
+    const [lastSelectedId, setLastSelectedId] = useState(null);
+    const [bulkLoading, setBulkLoading] = useState(false);
+    const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState({ isOpen: false, variant: 'danger', title: '', description: '', choices: [] });
 
     const activePeriodRef = useRef({ year, month });
 
     useEffect(() => {
         activePeriodRef.current = { year, month };
+        setSelectedIds([]);
+        setLastSelectedId(null);
     }, [year, month]);
+
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape' && selectedIds.length > 0 && !showModal && !deleteDialog.isOpen && !bulkDeleteConfirm.isOpen) {
+                setSelectedIds([]);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [selectedIds.length, showModal, deleteDialog.isOpen, bulkDeleteConfirm.isOpen]);
 
     const fetchIncomes = useCallback(async () => {
         const reqYear = year;
@@ -95,7 +114,7 @@ export default function IncomesPage() {
     async function handleReceive(income) {
         await guardAction(income.id, async () => {
             try {
-                await api.patch(`/incomes/${income.id}/receive`);
+                await api.patch(`/incomes/${income.id}/receive`, { year, month });
                 fetchIncomes();
             } catch (err) { console.error('Erro:', err); }
         });
@@ -104,26 +123,68 @@ export default function IncomesPage() {
     async function handleUndoReceive(income) {
         await guardAction(income.id, async () => {
             try {
-                await api.put(`/incomes/${income.id}`, { status: 'pending' });
+                await api.patch(`/incomes/${income.id}/pending`, { year, month });
                 fetchIncomes();
             } catch (err) { console.error('Erro:', err); }
         });
     }
 
     function openDeleteConfirm(income) {
-        setDeleteDialog({ isOpen: true, income });
+        if (income.recurring_income_id) {
+            setDeleteDialog({
+                isOpen: true,
+                income,
+                variant: 'choice',
+                title: 'Excluir Renda Recorrente',
+                description: 'Esta é uma renda recorrente mensal. Deseja cancelar também os próximos recebimentos automáticos?',
+                choices: [
+                    {
+                        label: 'Remover só este mês',
+                        description: 'A recorrência continua gerando os próximos meses.',
+                        variant: 'secondary',
+                        onClick: () => executeDelete(income, { deleteRecurring: false })
+                    },
+                    {
+                        label: 'Cancelar recorrência também',
+                        description: 'Remove este mês e impede novos lançamentos automáticos.',
+                        variant: 'danger',
+                        onClick: () => executeDelete(income, { deleteRecurring: true })
+                    }
+                ]
+            });
+        } else {
+            setDeleteDialog({
+                isOpen: true,
+                income,
+                variant: 'danger',
+                title: 'Excluir Renda',
+                description: `Deseja mesmo remover a renda "${income.name}"? Esta ação não pode ser desfeita.`,
+                choices: []
+            });
+        }
     }
 
-    async function handleConfirmDelete() {
-        const income = deleteDialog.income;
+    async function executeDelete(income, { deleteRecurring = false } = {}) {
         if (!income) return;
         await guardAction(income.id, async () => {
             try {
-                await api.delete(`/incomes/${income.id}`);
+                await api.delete(`/incomes/${income.id}`, {
+                    params: {
+                        year,
+                        month,
+                        delete_recurring: deleteRecurring ? 1 : 0,
+                    }
+                });
                 fetchIncomes();
             } catch (err) { console.error('Erro:', err); }
         });
-        setDeleteDialog({ isOpen: false, income: null });
+        setDeleteDialog({ isOpen: false, income: null, variant: 'danger', title: '', description: '', choices: [] });
+    }
+
+    async function handleConfirmDelete() {
+        if (deleteDialog.income) {
+            await executeDelete(deleteDialog.income, { deleteRecurring: false });
+        }
     }
 
     async function handleSubmit(e) {
@@ -193,6 +254,126 @@ export default function IncomesPage() {
     const filteredIncomes = incomes
         .filter((i) => filterStatus === 'all' || i.status === filterStatus)
         .filter((i) => !search || i.name.toLowerCase().includes(search.toLowerCase()));
+
+    // Bulk selection handlers
+    const visibleIds = filteredIncomes.map((i) => i.id);
+    const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.includes(id));
+
+    function toggleSelectAll() {
+        if (allVisibleSelected) {
+            setSelectedIds((prev) => prev.filter((id) => !visibleIds.includes(id)));
+        } else {
+            setSelectedIds((prev) => Array.from(new Set([...prev, ...visibleIds])));
+        }
+    }
+
+    function toggleSelectIncome(incomeId, event) {
+        if (event?.shiftKey && lastSelectedId && visibleIds.includes(lastSelectedId) && visibleIds.includes(incomeId)) {
+            const idxA = visibleIds.indexOf(lastSelectedId);
+            const idxB = visibleIds.indexOf(incomeId);
+            const start = Math.min(idxA, idxB);
+            const end = Math.max(idxA, idxB);
+            const rangeIds = visibleIds.slice(start, end + 1);
+            setSelectedIds((prev) => Array.from(new Set([...prev, ...rangeIds])));
+        } else {
+            setSelectedIds((prev) =>
+                prev.includes(incomeId) ? prev.filter((id) => id !== incomeId) : [...prev, incomeId]
+            );
+        }
+        setLastSelectedId(incomeId);
+    }
+
+    const selectedIncomes = incomes.filter((i) => selectedIds.includes(i.id));
+    const selectedTotalAmount = selectedIncomes.reduce((acc, i) => acc + parseFloat(i.amount || 0), 0);
+    const selectedPendingCount = selectedIncomes.filter((i) => i.status !== 'received').length;
+
+    async function handleBulkReceive() {
+        if (selectedIds.length === 0 || bulkLoading) return;
+        setBulkLoading(true);
+        try {
+            await api.post('/incomes/bulk-receive', { ids: selectedIds, year, month });
+            setSelectedIds([]);
+            await fetchIncomes();
+        } catch (err) {
+            console.error('Erro ao receber em lote:', err);
+        } finally {
+            setBulkLoading(false);
+        }
+    }
+
+    function openBulkDeleteConfirm() {
+        if (selectedIds.length === 0) return;
+        const hasRecurring = selectedIncomes.some((i) => !!i.recurring_income_id);
+
+        if (hasRecurring) {
+            setBulkDeleteConfirm({
+                isOpen: true,
+                variant: 'choice',
+                title: `Excluir ${selectedIds.length} Renda(s) Selecionada(s)`,
+                description: 'Algumas das rendas selecionadas possuem recorrência mensal. Como deseja proceder?',
+                choices: [
+                    {
+                        label: 'Remover apenas os lançamentos deste mês',
+                        description: 'Mantém as recorrências mensais gerando nos próximos meses.',
+                        variant: 'secondary',
+                        onClick: () => executeBulkDelete({ deleteRecurring: false }),
+                    },
+                    {
+                        label: 'Remover e cancelar recorrências vinculadas',
+                        description: 'Exclui as rendas selecionadas e encerra os lançamentos automáticos.',
+                        variant: 'danger',
+                        onClick: () => executeBulkDelete({ deleteRecurring: true }),
+                    },
+                ],
+            });
+        } else {
+            setBulkDeleteConfirm({
+                isOpen: true,
+                variant: 'danger',
+                title: `Excluir ${selectedIds.length} Renda(s)`,
+                description: `Deseja mesmo remover as ${selectedIds.length} rendas selecionadas (${formatCurrency(selectedTotalAmount)})? Esta ação não pode ser desfeita.`,
+                choices: [],
+            });
+        }
+    }
+
+    async function executeBulkDelete({ deleteRecurring = false } = {}) {
+        if (selectedIds.length === 0 || bulkLoading) return;
+        setBulkLoading(true);
+        try {
+            await api.post('/incomes/bulk-delete', {
+                ids: selectedIds,
+                year,
+                month,
+                delete_recurring: deleteRecurring,
+            });
+            setSelectedIds([]);
+            setBulkDeleteConfirm({ isOpen: false, variant: 'danger', title: '', description: '', choices: [] });
+            await fetchIncomes();
+        } catch (err) {
+            console.error('Erro ao excluir rendas em lote:', err);
+        } finally {
+            setBulkLoading(false);
+        }
+    }
+
+    async function handleDuplicate(income) {
+        await guardAction(`dup-${income.id}`, async () => {
+            try {
+                await api.post('/incomes', {
+                    name: `${income.name} (Cópia)`,
+                    amount: parseFloat(income.amount) || 0,
+                    is_recurring: false,
+                    expected_date: normalizeDate(income.expected_date) || `${year}-${String(month).padStart(2, '0')}-05`,
+                    status: 'pending',
+                    wallet_id: income.wallet_id || null,
+                });
+                fetchIncomes();
+            } catch (err) {
+                console.error('Erro ao duplicar renda:', err);
+            }
+        });
+    }
 
     const totalExpected = incomes.reduce((acc, i) => acc + parseFloat(i.amount), 0);
     const totalReceived = incomes.filter(i => i.status === 'received').reduce((acc, i) => acc + parseFloat(i.amount), 0);
@@ -335,53 +516,92 @@ export default function IncomesPage() {
                 /* Ledger Sheet Container */
                 <div className="border border-[var(--border-primary)] rounded-xl bg-[var(--bg-card)] shadow-xs overflow-hidden relative">
                     {/* Header virtual do Ledger */}
-                    <div className="hidden sm:flex items-center gap-4 bg-[var(--bg-secondary)]/50 px-6 py-3.5 text-xs font-semibold text-[var(--text-tertiary)] border-b border-[var(--border-primary)]">
-                        <div className="w-10 shrink-0 text-center">Status</div>
-                        <div className="w-24 shrink-0 sm:pl-4">Vencimento</div>
-                        <div className="flex-1">Origem</div>
-                        <div className="w-32 shrink-0">Carteira</div>
-                        <div className="w-36 text-right sm:pr-8">Valor</div>
-                        <div className="w-16 shrink-0"></div>
+                    <div className="flex items-center gap-3 sm:gap-4 bg-[var(--bg-secondary)]/50 px-4 sm:px-6 py-3.5 text-xs font-semibold text-[var(--text-tertiary)] border-b border-[var(--border-primary)]">
+                        <div className="w-6 shrink-0 flex items-center justify-center">
+                            <button
+                                type="button"
+                                onClick={toggleSelectAll}
+                                className={`flex h-4 w-4 items-center justify-center rounded border transition-all ${
+                                    allVisibleSelected
+                                        ? 'border-[var(--color-primary-500)] bg-[var(--color-primary-500)] text-white'
+                                        : 'border-[var(--border-primary)] bg-[var(--bg-card)] hover:border-[var(--color-primary-500)]'
+                                }`}
+                                title={allVisibleSelected ? 'Desmarcar todas' : 'Selecionar todas visíveis'}
+                            >
+                                {allVisibleSelected && <Check size={10} strokeWidth={3.5} />}
+                            </button>
+                        </div>
+                        <div className="w-8 shrink-0 text-center hidden sm:block">Status</div>
+                        <div className="w-24 shrink-0 sm:pl-2 hidden sm:block">Vencimento</div>
+                        <div className="flex-1">
+                            <span className="hidden sm:inline">Origem</span>
+                            <span className="sm:hidden">Selecionar todas ({filteredIncomes.length})</span>
+                        </div>
+                        <div className="w-32 shrink-0 hidden sm:block">Carteira</div>
+                        <div className="w-36 text-right sm:pr-8 hidden sm:block">Valor</div>
+                        <div className="w-24 shrink-0 hidden sm:block"></div>
                     </div>
 
                     <div className="divide-y divide-[var(--border-primary)]">
                         {filteredIncomes.map((income) => {
                             const isReceived = income.status === 'received';
+                            const isSelected = selectedIds.includes(income.id);
                             return (
-                                <div key={income.id} className={`group flex flex-col sm:flex-row sm:items-center gap-4 px-6 py-4 transition-all hover:bg-[var(--bg-hover)]/30 relative ${isReceived ? 'opacity-80' : ''}`}>
-                                    {/* Status Toggle Checkbox */}
-                                    <div className="w-10 shrink-0 flex items-center justify-center z-10">
-                                        {isReceived ? (
-                                            <button 
-                                                onClick={() => !isActionInProgress(income.id) && handleUndoReceive(income)} 
-                                                disabled={isActionInProgress(income.id)} 
-                                                className="flex h-5 w-5 items-center justify-center rounded border border-[var(--color-success-500)] bg-[var(--color-success-50)] dark:bg-[var(--color-success-500)]/10 text-[var(--color-success-600)] transition-all hover:scale-95 disabled:opacity-50" 
-                                                title="Estornar recebimento"
+                                <div key={income.id} className={`group flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 px-4 sm:px-6 py-4 transition-all hover:bg-[var(--bg-hover)]/30 relative ${
+                                    isSelected
+                                        ? 'bg-[var(--color-primary-500)]/5 dark:bg-[var(--color-primary-500)]/10'
+                                        : isReceived ? 'opacity-80' : ''
+                                }`}>
+                                    {/* Selection Checkbox + Status Toggle Checkbox */}
+                                    <div className="flex items-center gap-3 shrink-0 z-10">
+                                        <div className="w-6 flex items-center justify-center">
+                                            <button
+                                                type="button"
+                                                onClick={(e) => toggleSelectIncome(income.id, e)}
+                                                className={`flex h-4 w-4 items-center justify-center rounded border transition-all ${
+                                                    isSelected
+                                                        ? 'border-[var(--color-primary-500)] bg-[var(--color-primary-500)] text-white'
+                                                        : 'border-[var(--border-primary)] bg-[var(--bg-card)] opacity-60 group-hover:opacity-100 hover:border-[var(--color-primary-500)]'
+                                                }`}
+                                                title={isSelected ? 'Desmarcar renda' : 'Selecionar renda (Shift+Clique para intervalo)'}
                                             >
-                                                {isActionInProgress(income.id) ? (
-                                                    <div className="h-2.5 w-2.5 animate-spin rounded-full border-2 border-current/30 border-t-current" />
-                                                ) : (
-                                                    <Check size={11} strokeWidth={3.5} />
-                                                )}
+                                                {isSelected && <Check size={10} strokeWidth={3.5} />}
                                             </button>
-                                        ) : (
-                                            <button 
-                                                onClick={() => !isActionInProgress(income.id) && handleReceive(income)} 
-                                                disabled={isActionInProgress(income.id)} 
-                                                className="flex h-5 w-5 items-center justify-center rounded border border-[var(--border-primary)] hover:border-[var(--color-primary-500)] hover:bg-[var(--bg-hover)] transition-all hover:scale-95 disabled:opacity-50" 
-                                                title="Marcar como recebido"
-                                            >
-                                                {isActionInProgress(income.id) ? (
-                                                    <div className="h-2.5 w-2.5 animate-spin rounded-full border-2 border-[var(--color-primary-600)]/30 border-t-[var(--color-primary-600)]" />
-                                                ) : (
-                                                    <div className="h-1.5 w-1.5 rounded-full bg-[var(--text-tertiary)] opacity-35 group-hover:opacity-100 transition-opacity" />
-                                                )}
-                                            </button>
-                                        )}
+                                        </div>
+
+                                        <div className="w-8 flex items-center justify-center">
+                                            {isReceived ? (
+                                                <button 
+                                                    onClick={() => !isActionInProgress(income.id) && handleUndoReceive(income)} 
+                                                    disabled={isActionInProgress(income.id)} 
+                                                    className="flex h-5 w-5 items-center justify-center rounded border border-[var(--color-success-500)] bg-[var(--color-success-50)] dark:bg-[var(--color-success-500)]/10 text-[var(--color-success-600)] transition-all hover:scale-95 disabled:opacity-50" 
+                                                    title="Estornar recebimento"
+                                                >
+                                                    {isActionInProgress(income.id) ? (
+                                                        <div className="h-2.5 w-2.5 animate-spin rounded-full border-2 border-current/30 border-t-current" />
+                                                    ) : (
+                                                        <Check size={11} strokeWidth={3.5} />
+                                                    )}
+                                                </button>
+                                            ) : (
+                                                <button 
+                                                    onClick={() => !isActionInProgress(income.id) && handleReceive(income)} 
+                                                    disabled={isActionInProgress(income.id)} 
+                                                    className="flex h-5 w-5 items-center justify-center rounded border border-[var(--border-primary)] hover:border-[var(--color-primary-500)] hover:bg-[var(--bg-hover)] transition-all hover:scale-95 disabled:opacity-50" 
+                                                    title="Marcar como recebido"
+                                                >
+                                                    {isActionInProgress(income.id) ? (
+                                                        <div className="h-2.5 w-2.5 animate-spin rounded-full border-2 border-[var(--color-primary-600)]/30 border-t-[var(--color-primary-600)]" />
+                                                    ) : (
+                                                        <div className="h-1.5 w-1.5 rounded-full bg-[var(--text-tertiary)] opacity-35 group-hover:opacity-100 transition-opacity" />
+                                                    )}
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
 
                                     {/* Data de Vencimento */}
-                                    <div className="w-24 shrink-0 text-xs text-[var(--text-secondary)] sm:pl-4 tabular-nums">
+                                    <div className="w-24 shrink-0 text-xs text-[var(--text-secondary)] sm:pl-2 tabular-nums">
                                         {formatDateBR(income.expected_date)}
                                     </div>
 
@@ -429,8 +649,13 @@ export default function IncomesPage() {
                                         </p>
                                     </div>
 
-                                    {/* Ações flutuantes */}
-                                    <div className="flex sm:absolute sm:right-6 sm:top-1/2 sm:-translate-y-1/2 items-center gap-1 sm:opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-[var(--bg-card)] sm:pl-4">
+                                    {/* Ações */}
+                                    <div className="flex items-center justify-start sm:justify-end gap-1 w-full sm:w-24 shrink-0 opacity-65 group-hover:opacity-100 transition-opacity duration-200 z-10">
+                                        {!income.recurring_income_id && (
+                                            <button onClick={() => handleDuplicate(income)} disabled={isActionInProgress(`dup-${income.id}`)} className="flex items-center justify-center h-7 w-7 rounded-lg border border-[var(--border-primary)] transition-colors hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--color-primary-600)] disabled:opacity-50" title="Duplicar Renda">
+                                                <Copy size={12} />
+                                            </button>
+                                        )}
                                         <button onClick={() => openEdit(income)} className="flex items-center justify-center h-7 w-7 rounded-lg border border-[var(--border-primary)] transition-colors hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--color-primary-600)]" title="Editar">
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
@@ -451,6 +676,54 @@ export default function IncomesPage() {
                         })}
                     </div>
                 </div>
+            )}
+
+            {/* Barra Flutuante de Ações em Lote (Bulk Actions) */}
+            {selectedIds.length > 0 && createPortal(
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[90] w-[94%] max-w-2xl rounded-2xl border border-[var(--border-primary)] bg-[var(--bg-card)] px-4 py-3 shadow-2xl flex flex-wrap items-center justify-between gap-3 animate-in fade-in slide-in-from-bottom-4 duration-200">
+                    <div className="flex items-center gap-3">
+                        <span className="flex h-7 px-2.5 items-center justify-center rounded-lg bg-[var(--color-primary-500)]/15 border border-[var(--color-primary-500)]/30 text-xs font-extrabold text-[var(--color-primary-600)] tabular-nums">
+                            {selectedIds.length} {selectedIds.length === 1 ? 'selecionada' : 'selecionadas'}
+                        </span>
+                        <div className="text-xs">
+                            <span className="text-[var(--text-tertiary)] font-medium">Total: </span>
+                            <strong className="text-[var(--text-primary)] font-bold tabular-nums">{formatCurrency(selectedTotalAmount)}</strong>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        {selectedPendingCount > 0 && (
+                            <button
+                                type="button"
+                                onClick={handleBulkReceive}
+                                disabled={bulkLoading}
+                                className="flex items-center gap-1.5 rounded-xl border border-[var(--color-success-500)]/40 bg-[var(--color-success-50)] dark:bg-[var(--color-success-500)]/10 px-3 py-2 text-xs font-bold text-[var(--color-success-600)] hover:bg-[var(--color-success-500)] hover:text-white transition-all active:scale-95 disabled:opacity-50"
+                            >
+                                <Check size={13} strokeWidth={2.5} />
+                                Marcar Recebidas ({selectedPendingCount})
+                            </button>
+                        )}
+                        <button
+                            type="button"
+                            onClick={openBulkDeleteConfirm}
+                            disabled={bulkLoading}
+                            className="flex items-center gap-1.5 rounded-xl bg-[var(--color-danger-600)] px-3.5 py-2 text-xs font-bold text-white hover:bg-[var(--color-danger-500)] transition-all active:scale-95 disabled:opacity-50 shadow-sm"
+                        >
+                            <Trash2 size={13} strokeWidth={2.5} />
+                            Excluir ({selectedIds.length})
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setSelectedIds([])}
+                            disabled={bulkLoading}
+                            className="rounded-xl p-2 text-xs font-semibold text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] transition-colors"
+                            title="Limpar seleção (Esc)"
+                        >
+                            <X size={15} />
+                        </button>
+                    </div>
+                </div>,
+                document.body
             )}
 
             {/* Modal: Ficha de Lançamento (Index Card style) */}
@@ -555,12 +828,24 @@ export default function IncomesPage() {
             )}
             <ConfirmDialog
                 isOpen={deleteDialog.isOpen}
-                onClose={() => setDeleteDialog({ isOpen: false, income: null })}
-                title="Excluir Renda"
-                description={deleteDialog.income ? `Deseja mesmo remover a renda "${deleteDialog.income.name}"? Esta ação não pode ser desfeita.` : ''}
-                variant="danger"
+                onClose={() => setDeleteDialog({ isOpen: false, income: null, variant: 'danger', title: '', description: '', choices: [] })}
+                title={deleteDialog.title || 'Excluir Renda'}
+                description={deleteDialog.description || (deleteDialog.income ? `Deseja mesmo remover a renda "${deleteDialog.income.name}"? Esta ação não pode ser desfeita.` : '')}
+                variant={deleteDialog.variant || 'danger'}
                 confirmLabel="Remover"
                 onConfirm={handleConfirmDelete}
+                choices={deleteDialog.choices || []}
+            />
+            <ConfirmDialog
+                isOpen={bulkDeleteConfirm.isOpen}
+                onClose={() => setBulkDeleteConfirm({ isOpen: false, variant: 'danger', title: '', description: '', choices: [] })}
+                title={bulkDeleteConfirm.title}
+                description={bulkDeleteConfirm.description}
+                variant={bulkDeleteConfirm.variant}
+                confirmLabel="Excluir Selecionadas"
+                loading={bulkLoading}
+                onConfirm={() => executeBulkDelete({ deleteRecurring: false })}
+                choices={bulkDeleteConfirm.choices}
             />
         </AppLayout>
     );

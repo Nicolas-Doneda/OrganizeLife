@@ -16,12 +16,16 @@ export default function GoogleCallbackPage() {
             // Faz a troca segura do código temporário pelo token Sanctum final (S4)
             api.post('/auth/google/exchange', { code })
                 .then((res) => {
+                    if (res.data.requires_2fa) {
+                        localStorage.setItem('auth_token', res.data.data.temp_token);
+                        navigate('/2fa-verify');
+                        return null;
+                    }
                     const token = res.data.data.token;
                     localStorage.setItem('auth_token', token);
-                    return fetchUser();
-                })
-                .then(() => {
-                    navigate('/dashboard');
+                    return fetchUser().then(() => {
+                        navigate('/dashboard');
+                    });
                 })
                 .catch((err) => {
                     console.error('Erro na troca de código Google OAuth:', err);

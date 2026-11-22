@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Model;
 class SavingDeposit extends Model
 {
     protected $fillable = [
-        'user_id',
         'saving_id',
         'wallet_id',
         'amount',

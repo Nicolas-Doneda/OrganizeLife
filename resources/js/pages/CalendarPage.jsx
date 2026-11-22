@@ -88,7 +88,7 @@ export default function CalendarPage() {
             }
             setBills(billsRes.data.data);
             setEvents(eventsRes.data.data);
-            setRecurringBills(recurringRes.data.data.filter(rb => rb.is_active));
+            setRecurringBills(recurringRes.data.data.filter(rb => rb.active));
             setIncomes(incomesRes.data.data);
         } catch (err) {
             console.error('Erro:', err);

@@ -79,6 +79,7 @@ export default function BillModal({
         name_snapshot: '',
         name: '', // Some endpoints use name, some name_snapshot
         expected_amount: '',
+        paid_amount: '',
         due_date: '',
         due_day: '1',
         category_id: '',
@@ -108,6 +109,7 @@ export default function BillModal({
                     name_snapshot: bill.name_snapshot || bill.name || '',
                     name: bill.name || bill.name_snapshot || '',
                     expected_amount: bill.expected_amount || '',
+                    paid_amount: bill.paid_amount != null ? String(bill.paid_amount) : '',
                     due_date: bill.due_date ? bill.due_date.substring(0, 10) : '',
                     due_day: bill.due_day || '1',
                     category_id: bill.category_id || '',
@@ -127,6 +129,7 @@ export default function BillModal({
                     name_snapshot: '',
                     name: '',
                     expected_amount: '',
+                    paid_amount: '',
                     due_date: initialDueDate,
                     due_day: defaultDay,
                     category_id: '',
@@ -230,6 +233,20 @@ export default function BillModal({
                                 )}
                             </div>
                         </div>
+
+                        {bill && bill.status === 'paid' && (
+                            <div>
+                                <label className="mb-1.5 block text-xs font-semibold text-[var(--color-success-600)]">
+                                    Valor Real Pago (R$) — deixe vazio para usar o valor previsto
+                                </label>
+                                <CurrencyInput
+                                    value={form.paid_amount}
+                                    onChange={(v) => setForm({ ...form, paid_amount: v })}
+                                    placeholder={String(form.expected_amount || '0,00')}
+                                    className="focus-ring w-full rounded-lg border px-3.5 py-2.5 text-xs outline-none bg-[var(--bg-input)] text-[var(--text-primary)] border-[var(--color-success-500)]/40 font-semibold tabular-nums"
+                                />
+                            </div>
+                        )}
                     </div>
 
                     {/* Seção 2: Classificação & Destino */}

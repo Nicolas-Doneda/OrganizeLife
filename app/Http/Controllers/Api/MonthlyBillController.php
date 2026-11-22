@@ -225,27 +225,148 @@ class MonthlyBillController extends Controller
         $deleteAll = $request->boolean('delete_all_installments', false);
         $deleteRecurring = $request->boolean('delete_recurring', false);
 
-        // Se pediu para excluir a assinatura junto
-        if ($deleteRecurring && $bill->recurring_bill_id) {
-            $bill->recurringBill()->delete();
-        }
+        DB::transaction(function () use ($request, $bill, $deleteAll, $deleteRecurring) {
+            // Se pediu para excluir a assinatura junto, remove a recorrência e também as contas mensais futuras não pagas
+            if ($deleteRecurring && $bill->recurring_bill_id) {
+                $targetPeriod = $bill->year * 100 + $bill->month;
+
+                $futureBills = $request->user()->monthlyBills()
+                    ->where('recurring_bill_id', $bill->recurring_bill_id)
+                    ->whereRaw('(year * 100 + month) >= ?', [$targetPeriod])
+                    ->where('status', '!=', MonthlyBill::STATUS_PAID)
+                    ->get();
+
+                foreach ($futureBills as $fb) {
+                    $fb->delete();
+                }
+
+                $bill->recurringBill()->delete();
+            }
+
+            if ($deleteAll && $bill->isInstallment()) {
+                // Deleta esta e todas as parcelas futuras do mesmo grupo iterando para disparar o MonthlyBillObserver
+                $installments = $request->user()->monthlyBills()
+                    ->where('installment_group_id', $bill->installment_group_id)
+                    ->where('installment_index', '>=', $bill->installment_index)
+                    ->get();
+
+                foreach ($installments as $inst) {
+                    $inst->delete();
+                }
+                return;
+            }
+
+            if (!$bill->trashed()) {
+                $bill->delete();
+            }
+        });
 
         if ($deleteAll && $bill->isInstallment()) {
-            // Deleta esta e todas as parcelas futuras do mesmo grupo
-            $request->user()->monthlyBills()
-                ->where('installment_group_id', $bill->installment_group_id)
-                ->where('installment_index', '>=', $bill->installment_index)
-                ->delete();
-
             return response()->json([
                 'message' => 'Parcelas removidas com sucesso.',
             ]);
         }
 
-        $bill->delete();
-
         return response()->json([
             'message' => 'Conta mensal removida com sucesso.',
+        ]);
+    }
+
+    //BULK DESTROY - Deletar múltiplas contas mensais de uma vez
+    public function bulkDestroy(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['required'],
+            'delete_all_installments' => ['sometimes', 'boolean'],
+            'delete_recurring' => ['sometimes', 'boolean'],
+        ]);
+
+        $deleteAll = $request->boolean('delete_all_installments', false);
+        $deleteRecurring = $request->boolean('delete_recurring', false);
+        $deletedCount = 0;
+
+        DB::transaction(function () use ($request, $validated, $deleteAll, $deleteRecurring, &$deletedCount) {
+            foreach ($validated['ids'] as $id) {
+                try {
+                    $bill = $this->resolveBill($request, (string) $id, true);
+                } catch (\Exception $e) {
+                    continue;
+                }
+
+                if ($deleteRecurring && $bill->recurring_bill_id) {
+                    $targetPeriod = $bill->year * 100 + $bill->month;
+
+                    $futureBills = $request->user()->monthlyBills()
+                        ->where('recurring_bill_id', $bill->recurring_bill_id)
+                        ->whereRaw('(year * 100 + month) >= ?', [$targetPeriod])
+                        ->where('status', '!=', MonthlyBill::STATUS_PAID)
+                        ->get();
+
+                    foreach ($futureBills as $fb) {
+                        if (!$fb->trashed()) {
+                            $fb->delete();
+                        }
+                    }
+
+                    $bill->recurringBill()->delete();
+                }
+
+                if ($deleteAll && $bill->isInstallment()) {
+                    $installments = $request->user()->monthlyBills()
+                        ->where('installment_group_id', $bill->installment_group_id)
+                        ->where('installment_index', '>=', $bill->installment_index)
+                        ->get();
+
+                    foreach ($installments as $inst) {
+                        if (!$inst->trashed()) {
+                            $inst->delete();
+                        }
+                    }
+                    $deletedCount++;
+                    continue;
+                }
+
+                if (!$bill->trashed()) {
+                    $bill->delete();
+                    $deletedCount++;
+                }
+            }
+        });
+
+        return response()->json([
+            'message' => "{$deletedCount} conta(s) removida(s) com sucesso.",
+            'deleted_count' => $deletedCount,
+        ]);
+    }
+
+    //BULK PAY - Marcar múltiplas contas como pagas de uma vez
+    public function bulkPay(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['required'],
+        ]);
+
+        $paidCount = 0;
+
+        DB::transaction(function () use ($request, $validated, &$paidCount) {
+            foreach ($validated['ids'] as $id) {
+                try {
+                    $bill = $this->resolveBill($request, (string) $id, true);
+                    if ($bill->status !== MonthlyBill::STATUS_PAID) {
+                        $bill->markAsPaid();
+                        $paidCount++;
+                    }
+                } catch (\Exception $e) {
+                    continue;
+                }
+            }
+        });
+
+        return response()->json([
+            'message' => "{$paidCount} conta(s) marcada(s) como paga(s).",
+            'paid_count' => $paidCount,
         ]);
     }
 
@@ -334,6 +455,8 @@ class MonthlyBillController extends Controller
                 $status = MonthlyBill::STATUS_OVERDUE;
             }
 
+            $sourceUid = "recurring_{$recurringBill->id}_{$year}_{$month}";
+
             $billData = [
                 'recurring_bill_id' => $recurringBill->id,
                 'category_id' => $recurringBill->category_id,
@@ -342,11 +465,26 @@ class MonthlyBillController extends Controller
                 'name_snapshot' => $recurringBill->name,
                 'expected_amount' => $recurringBill->expected_amount,
                 'due_date' => $dueDate,
-                'source_uid' => "recurring_{$recurringBill->id}_{$year}_{$month}",
+                'source_uid' => $sourceUid,
                 'status' => $status,
             ];
 
             if ($persist) {
+                $existing = $request->user()->monthlyBills()
+                    ->withTrashed()
+                    ->where('year', $year)
+                    ->where('month', $month)
+                    ->where('source_uid', $sourceUid)
+                    ->first();
+
+                if ($existing) {
+                    if ($existing->trashed()) {
+                        $existing->restore();
+                        $existing->update($billData);
+                    }
+                    return $existing;
+                }
+
                 return $request->user()->monthlyBills()->create($billData);
             } else {
                 $virtualBill = new MonthlyBill($billData);

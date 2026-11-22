@@ -30,6 +30,7 @@ class UpdateWalletRequest extends FormRequest
                 'max:30',
             ],
             'icon' => ['nullable', 'string', 'max:30'],
+            'balance' => ['sometimes', 'nullable', 'numeric', 'max:9999999999.99'],
         ];
     }
 

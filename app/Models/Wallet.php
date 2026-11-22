@@ -14,9 +14,11 @@ class Wallet extends Model
         'name',
         'color',
         'icon',
+        'balance',
     ];
 
     protected $casts = [
+        'balance' => 'decimal:2',
     ];
 
     // RELACIONAMENTOS
